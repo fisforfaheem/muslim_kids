@@ -18,7 +18,9 @@ class RegisterPageState extends State<RegisterPage> {
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+  final TextEditingController nameController = TextEditingController();
   bool isKidProfile = true;
   bool isLoading = false;
 
@@ -36,70 +38,109 @@ class RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> register() async {
-  if (passwordController.text != confirmPasswordController.text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Passwords do not match')),
-    );
-    return;
-  }
+    if (passwordController.text != confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
 
-  setState(() => isLoading = true);
+    if (nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your name')),
+      );
+      return;
+    }
 
-  try {
-    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-      email: emailController.text.trim(),
-      password: passwordController.text.trim(),
-    );
+    // Ensure avatar is selected for kid profiles
+    if (isKidProfile && highlightedAvatar == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an avatar')),
+      );
+      return;
+    }
 
-    // Store user email in Firestore
-    await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-      'email': emailController.text.trim(),
-      'userType': isKidProfile ? 'Kid' : 'Teacher',
-      'avatar': isKidProfile? highlightedAvatar:'',
-    });
+    setState(() => isLoading = true);
 
-    if (!mounted) return;
+    try {
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Lottie.asset('assets/success.json', width: 180, height: 180, repeat: false),
-            const SizedBox(height: 10),
-            Text(
-              'Account Created Successfully!',
-              style: GoogleFonts.kanit(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+      // Save the selectedAvatar (which is now properly updated when an avatar is chosen)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'email': emailController.text.trim(),
+        'name': nameController.text.trim(),
+        'userType': isKidProfile ? 'Kid' : 'Teacher',
+        'avatar': isKidProfile ? selectedAvatar : '',
+      });
+
+      if (!mounted) return;
+
+      // Create a full-screen dialog that blocks interaction with background
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierLabel: 'Success Dialog',
+        transitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (context, animation1, animation2) {
+          return PopScope(
+            canPop: false, // Prevent dialog dismissal with back button
+            child: Scaffold(
+              backgroundColor: Colors.black.withOpacity(0.5),
+              body: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Lottie.asset('assets/success.json',
+                        width: 180, height: 180, repeat: false),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Account Created Successfully!',
+                      style: GoogleFonts.kanit(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-      ),
-    );
+          );
+        },
+      );
 
-    await Future.delayed(const Duration(seconds: 3));
+      // Wait a moment and then navigate to home
+      await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
-    Navigator.pop(context);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomePage(
-          userType: isKidProfile ? 'Kid' : 'Teacher',
-          email: emailController.text.trim(),
+      if (!mounted) return;
+
+      // Navigate directly to HomePage, replacing all previous routes
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(
+            userType: isKidProfile ? 'Kid' : 'Teacher',
+            email: emailController.text.trim(),
+            name: nameController.text.trim(),
+            avatar: isKidProfile ? selectedAvatar : '',
+          ),
         ),
-      ),
-    );
-  } on FirebaseAuthException catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(e.message ?? 'Registration failed')),
-    );
-  } finally {
-    setState(() => isLoading = false);
+        (route) => false, // Remove all previous routes
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? 'Registration failed')),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +168,10 @@ class RegisterPageState extends State<RegisterPage> {
                         animatedTexts: [
                           TypewriterAnimatedText(
                             'MuslimKids',
-                            textStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+                            textStyle: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue),
                             speed: Duration(milliseconds: 200),
                           ),
                         ],
@@ -138,46 +182,67 @@ class RegisterPageState extends State<RegisterPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           ElevatedButton(
-                            onPressed: () => setState(() => isKidProfile = true),
+                            onPressed: () =>
+                                setState(() => isKidProfile = true),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: isKidProfile ? Colors.blue : Colors.white,
-                              foregroundColor: isKidProfile ? Colors.white : Colors.black,
+                              backgroundColor:
+                                  isKidProfile ? Colors.blue : Colors.white,
+                              foregroundColor:
+                                  isKidProfile ? Colors.white : Colors.black,
                             ),
-                            child: const Text('Kid Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: const Text('Kid Profile',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 10),
                           ElevatedButton(
-                            onPressed: () => setState(() => isKidProfile = false),
+                            onPressed: () =>
+                                setState(() => isKidProfile = false),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: !isKidProfile ? Colors.blue : Colors.white,
-                              foregroundColor: !isKidProfile ? Colors.white : Colors.black,
+                              backgroundColor:
+                                  !isKidProfile ? Colors.blue : Colors.white,
+                              foregroundColor:
+                                  !isKidProfile ? Colors.white : Colors.black,
                             ),
-                            child: const Text('Teacher Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: const Text('Teacher Profile',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
                       TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                            labelText: 'Name', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
                         controller: emailController,
-                        decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                            labelText: 'Email', border: OutlineInputBorder()),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: passwordController,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                            labelText: 'Password',
+                            border: OutlineInputBorder()),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: confirmPasswordController,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Confirm Password', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                            labelText: 'Confirm Password',
+                            border: OutlineInputBorder()),
                       ),
                       const SizedBox(height: 20),
 
                       // Show Avatar selection only for Kid Profile
                       if (isKidProfile) ...[
-                        Text('Choose Your Avatar:', style: GoogleFonts.kanit(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Choose Your Avatar:',
+                            style: GoogleFonts.kanit(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -187,23 +252,30 @@ class RegisterPageState extends State<RegisterPage> {
                                 setState(() {
                                   // Set highlighted avatar when tapped, without changing selectedAvatar
                                   highlightedAvatar = avatarImages[index];
+                                  // Also update the selected avatar for display
+                                  selectedAvatar = avatarImages[index];
                                 });
                               },
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: highlightedAvatar == avatarImages[index]
-                                          ? Colors.pink // Highlight with pink color
-                                          : Colors.transparent, // Default transparent border
+                                      color: highlightedAvatar ==
+                                              avatarImages[index]
+                                          ? Colors
+                                              .pink // Highlight with pink color
+                                          : Colors
+                                              .transparent, // Default transparent border
                                       width: 3,
                                     ),
                                   ),
                                   child: CircleAvatar(
                                     radius: 30,
-                                    backgroundImage: AssetImage(avatarImages[index]),
+                                    backgroundImage:
+                                        AssetImage(avatarImages[index]),
                                   ),
                                 ),
                               ),
@@ -224,15 +296,21 @@ class RegisterPageState extends State<RegisterPage> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 15),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 15),
                                 ),
-                                child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                child: const Text('Sign Up',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
                               ),
                             ),
                       const SizedBox(height: 10),
                       TextButton(
                         onPressed: navigateToLogin,
-                        child: const Text("I'm already a user! Login Now", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: const Text("I'm already a user! Login Now",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                       const Spacer(),
                     ],

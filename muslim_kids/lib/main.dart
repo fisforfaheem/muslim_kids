@@ -6,6 +6,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:muslim_kids/home_page.dart';
+import 'package:muslim_kids/services/prayer_alarm_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'firebase_notification_service.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -13,11 +15,36 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint("Handling a background message: ${message.messageId}");
 }
 
+Future<void> _requestPermissions() async {
+  // Request notification permission
+  await Permission.notification.request();
+
+  // Request exact alarm permission (for background alarms)
+  if (await Permission.scheduleExactAlarm.isGranted == false) {
+    await Permission.scheduleExactAlarm.request();
+  }
+
+  // Request ignore battery optimization permission
+  if (await Permission.ignoreBatteryOptimizations.isGranted == false) {
+    await Permission.ignoreBatteryOptimizations.request();
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await FirebaseNotificationService().init();
   await LocalNotificationService.initialize();
+
+  // Request required permissions
+  await _requestPermissions();
+
+  // Initialize prayer alarm service
+  if (FirebaseAuth.instance.currentUser != null) {
+    final prayerAlarmService = PrayerAlarmService();
+    await prayerAlarmService.scheduleAllPrayerTimeNotifications();
+  }
+
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const MyApp());
@@ -59,7 +86,13 @@ class AuthWrapper extends StatelessWidget {
                         userSnapshot.data!.data() as Map<String, dynamic>;
                     String userType = userData['userType'] ?? 'Kid';
                     String email = userData['email'] ?? user.email ?? '';
-                    return HomePage(userType: userType, email: email);
+                    String name = userData['name'] ?? '';
+                    String avatar = userData['avatar'] ?? 'assets/avatar2.jpg';
+                    return HomePage(
+                        userType: userType,
+                        email: email,
+                        name: name,
+                        avatar: avatar);
                   }
                 }
                 // If we're waiting for Firestore or user data doesn't exist yet

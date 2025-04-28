@@ -78,6 +78,7 @@ flutter:
   assets:
     - assets/child.jpg
     - assets/success.json
+    - assets/prayer_alarm.json
     - assets/avatar1.jpg
     - assets/avatar2.jpg
     - assets/avatar3.jpg
