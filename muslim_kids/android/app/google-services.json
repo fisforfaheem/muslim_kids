@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723523376297",
+    "project_id": "muslimkidsplatform",
+    "storage_bucket": "muslimkidsplatform.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723523376297:android:36ca11395ee6fddce745b8",
+        "android_client_info": {
+          "package_name": "com.example.muslim_kids"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjubSD6aU9Ma6xR5BK8L2n3gfms3KXjsA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
