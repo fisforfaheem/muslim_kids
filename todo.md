@@ -12,13 +12,13 @@
 ### Children's Features
 - [x] Animated videos for Islamic morals and values
 - [x] Islamic calendar with significant days and educational descriptions
+- [x] Live classes functionality for Quran recitation
+- [x] Prayer tracking system with visual charts
 
 ## Features To Be Implemented
 
 ### Children's Features
 - [ ] Quranic quizzes with rewards system
-- [ ] Prayer tracking system with visual charts
-- [ ] Live classes functionality for Quran recitation
 - [ ] Rewards and badges system for participation
 
 ### System Monitoring
@@ -31,8 +31,8 @@
 - [ ] Data analysis tools for system improvement
 
 ### Teacher Features
-- [ ] Live class hosting interface
-- [ ] Real-time student interaction tools
+- [x] Live class hosting interface
+- [x] Real-time student interaction tools
 - [ ] Quranic recitation and Namaz teaching modules
 
 ### Parent Features

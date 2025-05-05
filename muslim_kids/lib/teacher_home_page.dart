@@ -6,6 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
+import 'Features/teacher_class_details_page.dart';
 
 class TeacherHomePage extends StatefulWidget {
   final String email;
@@ -55,19 +60,70 @@ class TeacherHomePageState extends State<TeacherHomePage>
       'studentCount': selectedStudents.length,
     });
 
+    // Debug the selected students
+    debugPrint(
+        "Selected students for class $classId: ${selectedStudents.length}");
+    for (var student in selectedStudents) {
+      debugPrint(
+          "Student: ${student['name']}, ID: ${student['id']}, Email: ${student['email']}");
+    }
+
     // Add student enrollments
     for (var student in selectedStudents) {
+      // Ensure we have a valid student ID
+      String studentId = student['id'] ?? '';
+      if (studentId.isEmpty) {
+        debugPrint("⚠️ Warning: Empty student ID for ${student['name']}");
+        continue;
+      }
+
+      // Create enrollment with combined ID for uniqueness
       DocumentReference studentEnrollmentRef = FirebaseFirestore.instance
           .collection('class_enrollments')
-          .doc('${classId}_${student['id']}');
+          .doc('${classId}_$studentId');
 
       batch.set(studentEnrollmentRef, {
         'classId': classId,
-        'studentId': student['id'],
-        'studentName': student['name'],
-        'studentEmail': student['email'],
+        'studentId': studentId,
+        'studentName': student['name'] ?? 'Student',
+        'studentEmail': student['email'] ?? '',
         'hasJoined': false,
         'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Try to get the Firebase Auth UID for the student by email query
+      FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: student['email'])
+          .limit(1)
+          .get()
+          .then((querySnapshot) {
+        if (querySnapshot.docs.isNotEmpty) {
+          String firebaseUid = querySnapshot.docs.first.id;
+          debugPrint("Found Firebase UID for student: $firebaseUid");
+
+          // Create another enrollment with Firebase UID for backward compatibility
+          if (firebaseUid != studentId) {
+            DocumentReference uidEnrollmentRef = FirebaseFirestore.instance
+                .collection('class_enrollments')
+                .doc('${classId}_$firebaseUid');
+
+            FirebaseFirestore.instance.runTransaction((transaction) async {
+              transaction.set(uidEnrollmentRef, {
+                'classId': classId,
+                'studentId': firebaseUid, // Use Firebase UID
+                'studentName': student['name'] ?? 'Student',
+                'studentEmail': student['email'] ?? '',
+                'hasJoined': false,
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+            }).catchError((error) {
+              debugPrint("Error creating secondary enrollment: $error");
+            });
+          }
+        }
+      }).catchError((error) {
+        debugPrint("Error finding Firebase UID for student: $error");
       });
 
       // Create notification document for each student
@@ -75,7 +131,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
           FirebaseFirestore.instance.collection('notifications').doc();
 
       batch.set(notificationRef, {
-        'userId': student['id'],
+        'userId': studentId,
         'title': 'New Class Scheduled',
         'message':
             'You have a new class on $topic with $teacher scheduled for $date at $time.',
@@ -87,16 +143,46 @@ class TeacherHomePageState extends State<TeacherHomePage>
     }
 
     batch.commit().then((value) async {
+      debugPrint("Class and enrollments saved to Firestore successfully");
       DateTime classDateTime =
           DateFormat('yyyy-MM-dd hh:mm a').parse('$date $time');
       if (classDateTime.isAfter(DateTime.now())) {
-        Fluttertoast.showToast(
-          msg: "Class scheduled successfully!",
-          backgroundColor: Colors.green,
-          textColor: Colors.white,
-          fontSize: 18.0,
-          toastLength: Toast.LENGTH_SHORT,
-        );
+        // Show custom success SnackBar instead of toast
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Class scheduled successfully!",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          "$topic on $date at $time",
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
 
         await LocalNotificationService.showNotification(
           id: classId.hashCode, // Unique ID for each notification
@@ -104,6 +190,47 @@ class TeacherHomePageState extends State<TeacherHomePage>
           body:
               "You scheduled a class on '$topic' for $date at $time with ${selectedStudents.length} students!",
         );
+
+        // Schedule notification for students
+        for (var student in selectedStudents) {
+          try {
+            // Find Firebase UID for student by email
+            FirebaseFirestore.instance
+                .collection('users')
+                .where('email', isEqualTo: student['email'])
+                .limit(1)
+                .get()
+                .then((querySnapshot) async {
+              if (querySnapshot.docs.isNotEmpty) {
+                String studentFirebaseUid = querySnapshot.docs.first.id;
+                debugPrint(
+                    "Sending notification to student UID: $studentFirebaseUid");
+
+                // Create notification with Firebase UID
+                DocumentReference additionalNotificationRef = FirebaseFirestore
+                    .instance
+                    .collection('notifications')
+                    .doc();
+
+                await additionalNotificationRef.set({
+                  'userId': studentFirebaseUid, // Use Firebase UID
+                  'title': 'New Class Scheduled',
+                  'message':
+                      'You have a new class on $topic with $teacher scheduled for $date at $time.',
+                  'read': false,
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'type': 'class',
+                  'classId': classId
+                });
+
+                debugPrint(
+                    "Extra notification created for student with UID: $studentFirebaseUid");
+              }
+            });
+          } catch (e) {
+            debugPrint("Error creating extra notification: $e");
+          }
+        }
 
         // Schedule a notification for 15 minutes before class starts
         Duration timeUntilClass = classDateTime.difference(DateTime.now());
@@ -123,13 +250,26 @@ class TeacherHomePageState extends State<TeacherHomePage>
         selectedStudents = [];
       });
     }).catchError((error) {
-      Fluttertoast.showToast(
-        msg: "Error scheduling class: $error",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 18.0,
-        toastLength: Toast.LENGTH_SHORT,
-      );
+      debugPrint("Error scheduling class: $error");
+      // Show error with SnackBar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text("Error scheduling class: $error")),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
     });
   }
 
@@ -235,12 +375,35 @@ class TeacherHomePageState extends State<TeacherHomePage>
     final TextEditingController timeController = TextEditingController();
     final TextEditingController linkController = TextEditingController();
 
+    // Create a local copy of selectedStudents to avoid direct manipulation
+    List<Map<String, dynamic>> localSelectedStudents = [...selectedStudents];
+
+    // Form key for validation
+    final formKey = GlobalKey<FormState>();
+
     Future<void> selectDate() async {
       DateTime? pickedDate = await showDatePicker(
         context: context,
         initialDate: DateTime.now(),
         firstDate: DateTime.now(),
         lastDate: DateTime(2101),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Colors.green.shade700,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.green.shade700,
+                ),
+              ),
+            ),
+            child: child!,
+          );
+        },
       );
       if (pickedDate != null && mounted) {
         setState(() {
@@ -253,6 +416,23 @@ class TeacherHomePageState extends State<TeacherHomePage>
       TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Colors.green.shade700,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.green.shade700,
+                ),
+              ),
+            ),
+            child: child!,
+          );
+        },
       );
       if (pickedTime != null && mounted) {
         setState(() {
@@ -264,132 +444,456 @@ class TeacherHomePageState extends State<TeacherHomePage>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          title: Text("Schedule New Class",
-              style: TextStyle(
-                  color: Colors.green[700], fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                    controller: teacherController,
-                    decoration: InputDecoration(labelText: "Teacher Name")),
-                TextField(
-                    controller: topicController,
-                    decoration: InputDecoration(labelText: "Topic")),
-                TextField(
-                    controller: dateController,
-                    decoration: InputDecoration(
-                        labelText: "Date",
-                        suffixIcon: IconButton(
-                            icon: Icon(Icons.calendar_today),
-                            onPressed: selectDate)),
-                    readOnly: true),
-                TextField(
-                    controller: timeController,
-                    decoration: InputDecoration(
-                        labelText: "Time",
-                        suffixIcon: IconButton(
-                            icon: Icon(Icons.access_time),
-                            onPressed: selectTime)),
-                    readOnly: true),
-                TextField(
-                    controller: linkController,
-                    decoration: InputDecoration(labelText: "Class Link")),
-                SizedBox(height: 10),
-                Text(
-                  "Selected Students: ${selectedStudents.length}",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                if (selectedStudents.isEmpty)
-                  Container(
-                    margin: EdgeInsets.only(top: 5),
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.yellow[100],
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text(
-                      "Please select students from the Students tab",
-                      style: TextStyle(color: Colors.orange[800]),
-                    ),
-                  ),
-                if (selectedStudents.isNotEmpty)
-                  Container(
-                    height: 100,
-                    margin: EdgeInsets.only(top: 5),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: selectedStudents.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            backgroundImage: selectedStudents[index]
-                                            ['avatar'] !=
-                                        null &&
-                                    selectedStudents[index]['avatar'].isNotEmpty
-                                ? AssetImage(selectedStudents[index]['avatar'])
-                                : null,
-                            child: selectedStudents[index]['avatar'] == null ||
-                                    selectedStudents[index]['avatar'].isEmpty
-                                ? Text(selectedStudents[index]['name'][0])
-                                : null,
-                          ),
-                          title: Text(selectedStudents[index]['name']),
-                          trailing: IconButton(
-                            icon: Icon(Icons.close, size: 18),
-                            onPressed: () {
-                              setState(() {
-                                selectedStudents.removeAt(index);
-                              });
-                              // Rebuild the dialog
-                              Navigator.pop(context);
-                              showScheduleClassDialog();
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0),
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("Cancel",
-                    style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold))),
-            ElevatedButton(
-                onPressed: selectedStudents.isEmpty
-                    ? null // Disable button if no students selected
-                    : () {
-                        addClassToFirebase(
-                            teacherController.text,
-                            topicController.text,
-                            dateController.text,
-                            timeController.text,
-                            linkController.text);
-                        Navigator.pop(context);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
-                  disabledBackgroundColor: Colors.grey,
+            child: Container(
+              width: double.maxFinite,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+                maxWidth: MediaQuery.of(context).size.width * 0.9,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16.0),
+                color: Colors.white,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header
+                        Center(
+                          child: Text(
+                            "Schedule New Class",
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 24),
+
+                        // Teacher Name Field
+                        Text(
+                          "Teacher Name",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        TextFormField(
+                          controller: teacherController,
+                          decoration: InputDecoration(
+                            hintText: "Enter teacher name",
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: Colors.green.shade700, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                          ),
+                          validator: (value) => value == null || value.isEmpty
+                              ? "Please enter teacher name"
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+
+                        // Topic Field
+                        Text(
+                          "Topic",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        TextFormField(
+                          controller: topicController,
+                          decoration: InputDecoration(
+                            hintText: "Enter class topic",
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: Colors.green.shade700, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                          ),
+                          validator: (value) => value == null || value.isEmpty
+                              ? "Please enter a topic"
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+
+                        // Date Field
+                        Text(
+                          "Date",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        TextFormField(
+                          controller: dateController,
+                          decoration: InputDecoration(
+                            hintText: "Select date",
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: Colors.green.shade700, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                            suffixIcon: IconButton(
+                              icon: Icon(Icons.calendar_today,
+                                  color: Colors.green.shade700),
+                              onPressed: selectDate,
+                            ),
+                          ),
+                          readOnly: true,
+                          onTap: selectDate,
+                          validator: (value) => value == null || value.isEmpty
+                              ? "Please select a date"
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+
+                        // Time Field
+                        Text(
+                          "Time",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        TextFormField(
+                          controller: timeController,
+                          decoration: InputDecoration(
+                            hintText: "Select time",
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: Colors.green.shade700, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                            suffixIcon: IconButton(
+                              icon: Icon(Icons.access_time,
+                                  color: Colors.green.shade700),
+                              onPressed: selectTime,
+                            ),
+                          ),
+                          readOnly: true,
+                          onTap: selectTime,
+                          validator: (value) => value == null || value.isEmpty
+                              ? "Please select a time"
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+
+                        // Class Link Field
+                        Text(
+                          "Class Link",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        TextFormField(
+                          controller: linkController,
+                          decoration: InputDecoration(
+                            hintText: "Enter class link",
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: Colors.green.shade700, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                          ),
+                          validator: (value) => value == null || value.isEmpty
+                              ? "Please enter class link"
+                              : null,
+                        ),
+                        SizedBox(height: 24),
+
+                        // Selected Students
+                        Row(
+                          children: [
+                            Icon(Icons.people, color: Colors.green.shade700),
+                            SizedBox(width: 8),
+                            Text(
+                              "Selected Students: ${localSelectedStudents.length}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+
+                        // Empty Students Warning
+                        if (localSelectedStudents.isEmpty)
+                          Container(
+                            margin: EdgeInsets.only(top: 5),
+                            padding: EdgeInsets.symmetric(
+                                vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.yellow.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline,
+                                    color: Colors.orange.shade800),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    "Please select students from the Students tab",
+                                    style: TextStyle(
+                                      color: Colors.orange.shade800,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Student List
+                        if (localSelectedStudents.isNotEmpty)
+                          Container(
+                            margin: EdgeInsets.only(top: 5),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade200),
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.grey.shade50,
+                            ),
+                            constraints: BoxConstraints(
+                              maxHeight: 180,
+                            ),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              itemCount: localSelectedStudents.length,
+                              itemBuilder: (context, index) {
+                                return ListTile(
+                                  dense: true,
+                                  leading: CircleAvatar(
+                                    backgroundImage:
+                                        localSelectedStudents[index]
+                                                        ['avatar'] !=
+                                                    null &&
+                                                localSelectedStudents[index]
+                                                        ['avatar']
+                                                    .isNotEmpty
+                                            ? AssetImage(
+                                                localSelectedStudents[index]
+                                                    ['avatar'])
+                                            : null,
+                                    backgroundColor: Colors.green.shade100,
+                                    child: localSelectedStudents[index]
+                                                    ['avatar'] ==
+                                                null ||
+                                            localSelectedStudents[index]
+                                                    ['avatar']
+                                                .isEmpty
+                                        ? Text(
+                                            localSelectedStudents[index]['name']
+                                                    [0]
+                                                .toUpperCase(),
+                                            style: TextStyle(
+                                                color: Colors.green.shade700),
+                                          )
+                                        : null,
+                                  ),
+                                  title: Text(
+                                    localSelectedStudents[index]['name'],
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  subtitle: Text(
+                                    localSelectedStudents[index]['email'] ?? '',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Container(
+                                      padding: EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.close,
+                                          size: 16, color: Colors.red),
+                                    ),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        localSelectedStudents.removeAt(index);
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        SizedBox(height: 24),
+
+                        // Buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Cancel Button
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                            // Schedule Button
+                            ElevatedButton(
+                              onPressed: localSelectedStudents.isEmpty
+                                  ? null
+                                  : () {
+                                      if (formKey.currentState!.validate()) {
+                                        // Update the main selectedStudents list with our local copy
+                                        setState(() {
+                                          selectedStudents = [
+                                            ...localSelectedStudents
+                                          ];
+                                        });
+
+                                        addClassToFirebase(
+                                            teacherController.text,
+                                            topicController.text,
+                                            dateController.text,
+                                            timeController.text,
+                                            linkController.text);
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey.shade300,
+                                disabledForegroundColor: Colors.grey.shade600,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Schedule Class",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Text("Submit", style: TextStyle(color: Colors.white))),
-          ],
-        );
+              ),
+            ),
+          );
+        });
       },
     );
   }
@@ -443,19 +947,21 @@ class ClassesTab extends StatelessWidget {
             SizedBox(height: 20),
             Container(
               decoration: BoxDecoration(
-                color: Colors.green.shade800,
+                color: Colors.green.shade700,
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Upcoming Classes",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      "Upcoming Classes",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   StreamBuilder(
@@ -466,16 +972,25 @@ class ClassesTab extends StatelessWidget {
                         .snapshots(),
                     builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                       if (!snapshot.hasData) {
-                        return Center(child: CircularProgressIndicator());
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child:
+                                CircularProgressIndicator(color: Colors.white),
+                          ),
+                        );
                       }
 
-                      var classes = snapshot.data!.docs;
+                      var allClasses = snapshot.data!.docs;
 
                       // Get the current date and time
                       DateTime now = DateTime.now();
 
-                      // Filter out expired classes
-                      for (var classDoc in classes) {
+                      // Separate upcoming and past classes without deleting
+                      var upcomingClasses = <QueryDocumentSnapshot>[];
+                      var pastClasses = <QueryDocumentSnapshot>[];
+
+                      for (var classDoc in allClasses) {
                         try {
                           String dateStr =
                               classDoc['date']; // Format: yyyy-MM-dd
@@ -487,67 +1002,223 @@ class ClassesTab extends StatelessWidget {
                               DateFormat('yyyy-MM-dd hh:mm a')
                                   .parse('$dateStr $timeStr');
 
-                          // If class time has passed, delete from Firebase
-                          if (classDateTime.isBefore(now)) {
-                            FirebaseFirestore.instance
-                                .collection('classes')
-                                .doc(classDoc.id)
-                                .delete();
+                          // Sort into upcoming or past without deleting
+                          if (classDateTime.isAfter(now)) {
+                            upcomingClasses.add(classDoc);
+                          } else {
+                            pastClasses.add(classDoc);
                           }
                         } catch (e) {
                           debugPrint("Error parsing date/time: $e");
+                          // Keep classes with invalid dates in upcoming for review
+                          upcomingClasses.add(classDoc);
                         }
                       }
 
-                      // Remove deleted classes from the list
-                      classes.removeWhere((classDoc) {
-                        try {
-                          String dateStr = classDoc['date'];
-                          String timeStr = classDoc['time'];
-                          DateTime classDateTime =
-                              DateFormat('yyyy-MM-dd hh:mm a')
-                                  .parse('$dateStr $timeStr');
-                          return classDateTime.isBefore(now);
-                        } catch (e) {
-                          return false;
-                        }
-                      });
-
-                      if (classes.isEmpty) {
+                      if (upcomingClasses.isEmpty) {
                         return Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            'No class scheduled yet! If you want to schedule Islamic lesson click "Schedule Class" button.',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.event_busy,
+                                  color: Colors.white.withOpacity(0.7),
+                                  size: 48,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No upcoming classes scheduled!',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Click the "Schedule Class" button to create one.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         );
                       }
 
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        itemCount: classes.length,
-                        itemBuilder: (context, index) {
-                          var classData = classes[index];
-                          return ClassCard(
-                            title: classData['topic'],
-                            teacher: classData['teacher'],
-                            date: classData['date'],
-                            time: classData['time'],
-                            link: classData['link'],
-                            studentCount: classData['studentCount'] ?? 0,
-                            classId: classData.id,
-                            onCancel: () => FirebaseFirestore.instance
-                                .collection('classes')
-                                .doc(classData.id)
-                                .delete(),
-                          );
-                        },
+                      return Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: upcomingClasses.length,
+                          itemBuilder: (context, index) {
+                            var classData = upcomingClasses[index];
+                            return ClassCard(
+                              title: classData['topic'],
+                              teacher: classData['teacher'],
+                              date: classData['date'],
+                              time: classData['time'],
+                              link: classData['link'],
+                              studentCount: classData['studentCount'] ?? 0,
+                              classId: classData.id,
+                              onCancel: () => FirebaseFirestore.instance
+                                  .collection('classes')
+                                  .doc(classData.id)
+                                  .delete(),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // Past Classes Section
+            SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade700,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    spreadRadius: 0,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Past Classes",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('classes')
+                        .where('user', isEqualTo: email)
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (!snapshot.hasData) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child:
+                                CircularProgressIndicator(color: Colors.white),
+                          ),
+                        );
+                      }
+
+                      var allClasses = snapshot.data!.docs;
+
+                      // Get the current date and time
+                      DateTime now = DateTime.now();
+
+                      // Filter to get only past classes
+                      var pastClasses = <QueryDocumentSnapshot>[];
+
+                      for (var classDoc in allClasses) {
+                        try {
+                          String dateStr =
+                              classDoc['date']; // Format: yyyy-MM-dd
+                          String timeStr =
+                              classDoc['time']; // Format: HH:mm AM/PM
+
+                          // Convert date and time to DateTime object
+                          DateTime classDateTime =
+                              DateFormat('yyyy-MM-dd hh:mm a')
+                                  .parse('$dateStr $timeStr');
+
+                          // Only include past classes
+                          if (classDateTime.isBefore(now)) {
+                            pastClasses.add(classDoc);
+                          }
+                        } catch (e) {
+                          debugPrint(
+                              "Error parsing date/time for past class: $e");
+                        }
+                      }
+
+                      if (pastClasses.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.history,
+                                  color: Colors.white.withOpacity(0.7),
+                                  size: 48,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No past classes available',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: pastClasses.length,
+                          itemBuilder: (context, index) {
+                            var classData = pastClasses[index];
+                            return PastClassCard(
+                              title: classData['topic'],
+                              teacher: classData['teacher'],
+                              date: classData['date'],
+                              time: classData['time'],
+                              link: classData['link'],
+                              studentCount: classData['studentCount'] ?? 0,
+                              classId: classData.id,
+                              onDelete: () => FirebaseFirestore.instance
+                                  .collection('classes')
+                                  .doc(classData.id)
+                                  .delete(),
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -877,133 +1548,375 @@ class ClassCard extends StatelessWidget {
   });
 
   void _launchURL() async {
-    final Uri url = Uri.parse(link);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not launch $link');
+    try {
+      String linkToLaunch = link.trim();
+
+      // If URL doesn't have a scheme, add https://
+      if (!linkToLaunch.startsWith('http://') &&
+          !linkToLaunch.startsWith('https://') &&
+          !linkToLaunch.startsWith('zoom://') &&
+          !linkToLaunch.contains('://')) {
+        linkToLaunch = 'https://$linkToLaunch';
+      }
+
+      final Uri url = Uri.parse(linkToLaunch);
+
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        Fluttertoast.showToast(
+          msg:
+              "Could not open the class link. No app available to handle this link.",
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          toastLength: Toast.LENGTH_LONG,
+        );
+      }
+    } catch (e) {
+      debugPrint("Error launching URL: $e");
+      Fluttertoast.showToast(
+        msg: "Error opening class link: ${e.toString()}",
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        toastLength: Toast.LENGTH_LONG,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            spreadRadius: 2,
-            offset: Offset(0, 2),
-          ),
-        ],
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 10),
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
+          // Header with green accent
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title and student count
+                  Row(
+                    children: [
+                      // Green vertical bar
+                      Container(
+                        width: 3,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade600,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // Title
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Student count badge
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.people,
+                                size: 14, color: Colors.blue.shade600),
+                            SizedBox(width: 6),
+                            Text(
+                              "$studentCount students",
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Teacher
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 16, color: Colors.grey.shade700),
+                      SizedBox(width: 8),
+                      Text(
+                        teacher,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Date and time (HORIZONTALLY DISPLAYED)
+                  Row(
+                    children: [
+                      // Date
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade100),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.calendar_today,
+                                size: 14, color: Colors.green.shade700),
+                            SizedBox(width: 6),
+                            Text(
+                              date,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 12),
+
+                      // Time
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade100),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.access_time_rounded,
+                                size: 14, color: Colors.orange.shade700),
+                            SizedBox(width: 6),
+                            Text(
+                              time,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.blue[100],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.people, size: 16, color: Colors.blue[800]),
-                    SizedBox(width: 4),
-                    Text(
-                      "$studentCount students",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
+            ),
+          ),
+
+          // Divider
+          Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
+
+          // Buttons
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                // Join Button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _launchURL,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Text(
-            teacher,
-            style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-          ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.calendar_today, size: 16, color: Colors.green),
-              SizedBox(width: 4),
-              Text(
-                date,
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
-              ),
-              SizedBox(width: 10),
-              Icon(Icons.access_time, size: 16, color: Colors.green),
-              SizedBox(width: 4),
-              Text(
-                time,
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              ElevatedButton.icon(
-                onPressed: _launchURL,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                icon: Icon(Icons.video_call, color: Colors.white, size: 16),
-                label: Text("Join Class",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ClassEnrollmentsPage(classId: classId, title: title),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.video_call, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Join Class",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                icon: Icon(Icons.people, color: Colors.white, size: 16),
-                label: Text("Students",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-              ElevatedButton.icon(
-                onPressed: onCancel,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                icon: Icon(Icons.cancel, color: Colors.white, size: 16),
-                label: Text("Cancel",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-            ],
+                  ),
+                ),
+
+                SizedBox(width: 8),
+
+                // Students button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ClassEnrollmentsPage(
+                            classId: classId,
+                            title: title,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Students",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+
+                // Details button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TeacherClassDetailsPage(
+                            classId: classId,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade500,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Details",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+
+                // Delete button
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    color: Colors.red),
+                                SizedBox(width: 8),
+                                Text("Cancel Class"),
+                              ],
+                            ),
+                            content: Text(
+                                "Are you sure you want to cancel this class?"),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text("No",
+                                    style:
+                                        TextStyle(color: Colors.grey.shade700)),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  onCancel();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text("Yes, Cancel"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    icon: Icon(Icons.delete_outline, color: Colors.red),
+                    splashRadius: 20,
+                    tooltip: "Cancel Class",
+                    iconSize: 20,
+                    padding: EdgeInsets.all(8),
+                    constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1087,6 +2000,429 @@ class ClassEnrollmentsPage extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class PastClassCard extends StatelessWidget {
+  final String title, teacher, date, time, link, classId;
+  final int studentCount;
+  final VoidCallback onDelete;
+
+  const PastClassCard({
+    super.key,
+    required this.title,
+    required this.teacher,
+    required this.date,
+    required this.time,
+    required this.link,
+    required this.classId,
+    required this.onDelete,
+    this.studentCount = 0,
+  });
+
+  void _launchURL() async {
+    try {
+      String linkToLaunch = link.trim();
+
+      // If URL doesn't have a scheme, add https://
+      if (!linkToLaunch.startsWith('http://') &&
+          !linkToLaunch.startsWith('https://') &&
+          !linkToLaunch.startsWith('zoom://') &&
+          !linkToLaunch.contains('://')) {
+        linkToLaunch = 'https://$linkToLaunch';
+      }
+
+      final Uri url = Uri.parse(linkToLaunch);
+
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        Fluttertoast.showToast(
+          msg:
+              "Could not open the class link. No app available to handle this link.",
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          toastLength: Toast.LENGTH_LONG,
+        );
+      }
+    } catch (e) {
+      debugPrint("Error launching URL: $e");
+      Fluttertoast.showToast(
+        msg: "Error opening class link: ${e.toString()}",
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        toastLength: Toast.LENGTH_LONG,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 10),
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with grey accent to show it's a past class
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title and student count
+                  Row(
+                    children: [
+                      // Grey vertical bar for past class
+                      Container(
+                        width: 3,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.shade400,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // Title
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Student count badge
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.people,
+                                size: 14, color: Colors.blue.shade600),
+                            SizedBox(width: 6),
+                            Text(
+                              "$studentCount students",
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Teacher
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 16, color: Colors.grey.shade700),
+                      SizedBox(width: 8),
+                      Text(
+                        teacher,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Past indicator, date and time
+                  Row(
+                    children: [
+                      // Past indicator
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blueGrey.shade100),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history,
+                                size: 14, color: Colors.blueGrey.shade700),
+                            SizedBox(width: 6),
+                            Text(
+                              "Past",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blueGrey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 12),
+
+                      // Date
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.calendar_today,
+                                size: 14, color: Colors.grey.shade600),
+                            SizedBox(width: 6),
+                            Text(
+                              date,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 12),
+
+                      // Time
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.access_time_rounded,
+                                size: 14, color: Colors.grey.shade600),
+                            SizedBox(width: 6),
+                            Text(
+                              time,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Divider
+          Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
+
+          // Buttons
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                // Recording Button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _launchURL,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade500,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.video_library, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Recording",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+
+                // Students button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ClassEnrollmentsPage(
+                            classId: classId,
+                            title: title,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade500,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Students",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+
+                // Details button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TeacherClassDetailsPage(
+                            classId: classId,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade500,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Details",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+
+                // Delete button
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    color: Colors.red),
+                                SizedBox(width: 8),
+                                Text("Delete Class"),
+                              ],
+                            ),
+                            content: Text(
+                                "Are you sure you want to delete this past class?"),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text("No",
+                                    style:
+                                        TextStyle(color: Colors.grey.shade700)),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  onDelete();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text("Yes, Delete"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    icon: Icon(Icons.delete_outline, color: Colors.red),
+                    splashRadius: 20,
+                    tooltip: "Delete Class",
+                    iconSize: 20,
+                    padding: EdgeInsets.all(8),
+                    constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class LocalNotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -18,6 +20,17 @@ class LocalNotificationService {
 
     // Initialize timezone data
     tz_data.initializeTimeZones();
+
+    // Get device timezone
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint('$TAG Timezone set to: $timeZoneName');
+    } catch (e) {
+      debugPrint('$TAG Error setting timezone: $e');
+      // Use UTC if timezone detection fails
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
 
     // Android Initialization Settings
     const AndroidInitializationSettings androidSettings =
@@ -59,8 +72,42 @@ class LocalNotificationService {
     // For Android 13+, request exact alarm permission
     await _requestExactAlarmPermissionIfNeeded();
 
+    // Request other Android permissions if needed
+    await _requestAndroidPermissionsIfNeeded();
+
     _initialized = true;
     debugPrint('$TAG Notification service initialized successfully');
+
+    // Test notification to verify permissions and setup
+    await showTestNotification();
+  }
+
+  // Check if notification permissions are granted
+  static Future<bool> checkPermissions() async {
+    try {
+      final bool? permissionsGranted = await _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.areNotificationsEnabled();
+
+      return permissionsGranted ?? false;
+    } catch (e) {
+      debugPrint('$TAG Error checking notification permissions: $e');
+      return false;
+    }
+  }
+
+  // Show a test notification to verify permissions and setup
+  static Future<void> showTestNotification() async {
+    try {
+      await showNotification(
+          id: 0,
+          title: 'Notification Test',
+          body: 'This is a test notification to verify setup');
+      debugPrint('$TAG Test notification sent successfully');
+    } catch (e) {
+      debugPrint('$TAG Error sending test notification: $e');
+    }
   }
 
   // Request exact alarm permission for Android 13+
@@ -81,6 +128,23 @@ class LocalNotificationService {
       }
     } catch (e) {
       debugPrint('$TAG Error requesting exact alarm permission: $e');
+    }
+  }
+
+  // Request additional Android permissions if needed
+  static Future<void> _requestAndroidPermissionsIfNeeded() async {
+    try {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _notificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidImplementation != null) {
+        // Request notification permissions for Android 13+
+        await androidImplementation.requestNotificationsPermission();
+        debugPrint('$TAG Requested Android notification permissions');
+      }
+    } catch (e) {
+      debugPrint('$TAG Error requesting Android permissions: $e');
     }
   }
 
@@ -110,9 +174,9 @@ class LocalNotificationService {
     AndroidNotificationDetails androidDetails;
     try {
       androidDetails = const AndroidNotificationDetails(
-        'prayer_notifications',
-        'Prayer Notifications',
-        channelDescription: 'Notifications for prayer times',
+        'muslim_kids_channel',
+        'Muslim Kids Notifications',
+        channelDescription: 'Notifications for Muslim Kids app',
         importance: Importance.high,
         priority: Priority.high,
         sound: RawResourceAndroidNotificationSound('adhan'),
@@ -130,9 +194,9 @@ class LocalNotificationService {
       // Fallback to default sound if adhan not found
       debugPrint('$TAG Using default sound: $e');
       androidDetails = const AndroidNotificationDetails(
-        'prayer_notifications',
-        'Prayer Notifications',
-        channelDescription: 'Notifications for prayer times',
+        'muslim_kids_channel',
+        'Muslim Kids Notifications',
+        channelDescription: 'Notifications for Muslim Kids app',
         importance: Importance.high,
         priority: Priority.high,
         playSound: true,
@@ -151,6 +215,7 @@ class LocalNotificationService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      sound: 'default',
     );
 
     final NotificationDetails details = NotificationDetails(
@@ -177,9 +242,9 @@ class LocalNotificationService {
     AndroidNotificationDetails androidDetails;
     try {
       androidDetails = const AndroidNotificationDetails(
-        'prayer_notifications',
-        'Prayer Notifications',
-        channelDescription: 'Notifications for prayer times',
+        'muslim_kids_channel',
+        'Muslim Kids Notifications',
+        channelDescription: 'Notifications for Muslim Kids app',
         importance: Importance.high,
         priority: Priority.high,
         sound: RawResourceAndroidNotificationSound('adhan'),
@@ -198,9 +263,9 @@ class LocalNotificationService {
       // Fallback to default sound if adhan not found
       debugPrint('$TAG Using default sound: $e');
       androidDetails = const AndroidNotificationDetails(
-        'prayer_notifications',
-        'Prayer Notifications',
-        channelDescription: 'Notifications for prayer times',
+        'muslim_kids_channel',
+        'Muslim Kids Notifications',
+        channelDescription: 'Notifications for Muslim Kids app',
         importance: Importance.high,
         priority: Priority.high,
         playSound: true,
@@ -220,6 +285,7 @@ class LocalNotificationService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      sound: 'default',
     );
 
     final NotificationDetails details = NotificationDetails(
@@ -228,11 +294,19 @@ class LocalNotificationService {
     );
 
     try {
+      // Log the timezone information
+      String timezoneName = tz.local.name;
+      debugPrint("$TAG Using timezone: $timezoneName");
+
       // Convert DateTime to TZDateTime
       final tz.TZDateTime scheduledDate = tz.TZDateTime.from(
         scheduledTime,
         tz.local,
       );
+
+      // Log the scheduled time
+      debugPrint(
+          "$TAG Original time: ${scheduledTime.toString()}, TZ time: ${scheduledDate.toString()}");
 
       // Cancel previous notification with same ID
       await cancelNotification(id);

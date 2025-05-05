@@ -4,16 +4,80 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart'; // Add clipboard functionality
 
 class LiveClassesPage extends StatelessWidget {
   const LiveClassesPage({super.key});
 
+  // Helper method to determine icon based on link
+  IconData _getPlatformIcon(String link) {
+    if (link.isEmpty) {
+      return Icons.error_outline;
+    } else if (link.contains('whatsapp')) {
+      return Icons.message; // Standard messaging icon for WhatsApp
+    } else if (link.contains('zoom')) {
+      return Icons.video_camera_front;
+    } else if (link.contains('meet') || link.contains('google')) {
+      return Icons.video_call;
+    } else if (link.contains('teams') || link.contains('microsoft')) {
+      return Icons.groups;
+    } else {
+      return Icons.link;
+    }
+  }
+
+  // Helper method to determine platform name based on link
+  String _getPlatformName(String link) {
+    if (link.isEmpty) {
+      return "Unknown";
+    } else if (link.contains('whatsapp')) {
+      return "WhatsApp";
+    } else if (link.contains('zoom')) {
+      return "Zoom";
+    } else if (link.contains('meet') || link.contains('google')) {
+      return "Google Meet";
+    } else if (link.contains('teams') || link.contains('microsoft')) {
+      return "Microsoft Teams";
+    } else if (link.contains('youtube')) {
+      return "YouTube";
+    } else {
+      return "Web Browser";
+    }
+  }
+
   void _launchURL(BuildContext context, String link, String classId,
       String studentId) async {
-    if (link.isNotEmpty && Uri.tryParse(link)?.hasAbsolutePath == true) {
-      final Uri url = Uri.parse(link);
+    if (link.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No class link provided by teacher')),
+      );
+      return;
+    }
 
-      // Update the join status
+    // Ensure link has proper scheme
+    String processedLink = link;
+    if (!link.startsWith('http://') &&
+        !link.startsWith('https://') &&
+        !link.startsWith('whatsapp://') &&
+        !link.startsWith('tel:') &&
+        !link.startsWith('sms:') &&
+        !link.startsWith('mailto:') &&
+        !link.startsWith('zoom:')) {
+      // Add https if no protocol is specified
+      processedLink = 'https://$link';
+    }
+
+    // Try to parse the URL
+    final Uri? uri = Uri.tryParse(processedLink);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid class link format')),
+      );
+      return;
+    }
+
+    // Update the join status in Firestore
+    try {
       await FirebaseFirestore.instance
           .collection('class_enrollments')
           .where('classId', isEqualTo: classId)
@@ -24,18 +88,88 @@ class LiveClassesPage extends StatelessWidget {
           snapshot.docs.first.reference.update({'hasJoined': true});
         }
       });
+    } catch (e) {
+      debugPrint("Error updating join status: $e");
+      // Continue with launch attempt even if update fails
+    }
 
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    // Log the link we're trying to launch
+    debugPrint("Attempting to launch URL: $uri");
+
+    try {
+      // Launch URL with appropriate mode
+      bool launched = false;
+
+      // WhatsApp links need special handling
+      if (uri.toString().contains('whatsapp')) {
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+      // Zoom links
+      else if (uri.toString().contains('zoom')) {
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+      // All other URLs
+      else {
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+          webViewConfiguration: WebViewConfiguration(
+            enableJavaScript: true,
+            enableDomStorage: true,
+          ),
+        );
+      }
+
+      if (!launched) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not launch the class link')),
+            SnackBar(
+              content: Text(
+                  'Could not open the class link. Please try again or contact your teacher.'),
+              duration: Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Copy Link',
+                onPressed: () {
+                  // Copy link to clipboard
+                  Clipboard.setData(ClipboardData(text: processedLink));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Link copied to clipboard'),
+                      backgroundColor: Colors.blue,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      } else {
+        // Show a success message
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Opening class link...'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
           );
         }
       }
-    } else {
+    } catch (e) {
+      debugPrint("Error launching URL: $e");
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid class link')),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -87,350 +221,707 @@ class LiveClassesPage extends StatelessWidget {
           ),
         ),
       ),
-      body: FutureBuilder<QuerySnapshot>(
+      body: FutureBuilder<DocumentSnapshot>(
+        // First get the user document to get the proper studentId
         future: FirebaseFirestore.instance
-            .collection('class_enrollments')
-            .where('studentId', isEqualTo: currentUser.uid)
+            .collection('users')
+            .doc(currentUser.uid)
             .get(),
-        builder: (context, enrollmentSnapshot) {
-          if (enrollmentSnapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
 
-          if (!enrollmentSnapshot.hasData ||
-              enrollmentSnapshot.data!.docs.isEmpty) {
+          if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'assets/no_classes.png',
-                    height: 120,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                      Icons.school_outlined,
-                      size: 80,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "No classes scheduled yet!",
-                    style: GoogleFonts.kanit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Text(
-                      "Your teacher hasn't scheduled any Islamic lessons for you yet.",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.kanit(
-                        fontSize: 16,
-                        color: Colors.black54,
+              child: Text(
+                "User profile not found. Please contact support.",
+                style: GoogleFonts.kanit(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          // Get the student ID from the user document
+          String studentId = userSnapshot.data!.id;
+          String studentName =
+              (userSnapshot.data!.data() as Map<String, dynamic>)['name'] ??
+                  'Student';
+
+          debugPrint("Looking for classes for student ID: $studentId");
+
+          // Try both UID and document ID for backward compatibility
+          return FutureBuilder<QuerySnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('class_enrollments')
+                .where('studentId',
+                    whereIn: [studentId, currentUser.uid]).get(),
+            builder: (context, enrollmentSnapshot) {
+              if (enrollmentSnapshot.connectionState ==
+                  ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              if (!enrollmentSnapshot.hasData ||
+                  enrollmentSnapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/no_classes.png',
+                        height: 120,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.school_outlined,
+                          size: 80,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "No classes scheduled yet!",
+                        style: GoogleFonts.kanit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          "Your teacher hasn't scheduled any Islamic lessons for you yet.",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.kanit(
+                            fontSize: 16,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        padding: EdgeInsets.all(16),
+                        margin: EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Icon(Icons.lightbulb,
+                                color: Colors.orange[800], size: 30),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                "When a teacher schedules a class, you'll receive a notification!",
+                                style: GoogleFonts.kanit(
+                                  fontSize: 14,
+                                  color: Colors.orange[800],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.orange[100],
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.orange),
-                    ),
-                    padding: EdgeInsets.all(16),
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
+                );
+              }
+
+              // Get all class IDs the student is enrolled in
+              List<String> enrolledClassIds = enrollmentSnapshot.data!.docs
+                  .map((doc) =>
+                      (doc.data() as Map<String, dynamic>)['classId'] as String)
+                  .toList();
+
+              debugPrint(
+                  "Found ${enrolledClassIds.length} enrolled classes for student: $studentName");
+
+              // Display message if no enrolled classes found
+              if (enrolledClassIds.isEmpty) {
+                return Center(
+                  child: Text(
+                    "No classes found. Please contact your teacher.",
+                    style: GoogleFonts.kanit(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+
+              // Fetch class details for enrolled classes
+              return StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('classes')
+                    .where(FieldPath.documentId, whereIn: enrolledClassIds)
+                    .snapshots(),
+                builder: (context, classSnapshot) {
+                  if (classSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!classSnapshot.hasData ||
+                      classSnapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "No class details available. Please contact support.",
+                        style: GoogleFonts.kanit(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  var allClasses = classSnapshot.data!.docs;
+                  debugPrint("Retrieved ${allClasses.length} class details");
+
+                  // Sort classes by date (newest first)
+                  allClasses.sort((a, b) {
+                    try {
+                      String dateA = a['date']; // Format: yyyy-MM-dd
+                      String timeA = a['time']; // Format: HH:mm AM/PM
+                      String dateB = b['date']; // Format: yyyy-MM-dd
+                      String timeB = b['time']; // Format: HH:mm AM/PM
+
+                      DateTime dateTimeA = DateFormat('yyyy-MM-dd hh:mm a')
+                          .parse('$dateA $timeA');
+                      DateTime dateTimeB = DateFormat('yyyy-MM-dd hh:mm a')
+                          .parse('$dateB $timeB');
+
+                      return dateTimeB.compareTo(dateTimeA); // Descending order
+                    } catch (e) {
+                      return 0; // Keep original order if there's an error
+                    }
+                  });
+
+                  // Filter out classes based on current time
+                  DateTime now = DateTime.now();
+                  var upcomingClasses = allClasses.where((classDoc) {
+                    try {
+                      String dateStr = classDoc['date']; // Format: yyyy-MM-dd
+                      String timeStr = classDoc['time']; // Format: HH:mm AM/PM
+
+                      // Convert date and time to DateTime object
+                      DateTime classDateTime = DateFormat('yyyy-MM-dd hh:mm a')
+                          .parse('$dateStr $timeStr');
+
+                      // Keep classes that haven't happened yet
+                      return classDateTime.isAfter(now);
+                    } catch (e) {
+                      debugPrint("Error parsing date/time: $e");
+                      return true; // Keep classes with unparseable dates by default
+                    }
+                  }).toList();
+
+                  // Filter past classes (classes that have already happened)
+                  var pastClasses = allClasses.where((classDoc) {
+                    try {
+                      String dateStr = classDoc['date']; // Format: yyyy-MM-dd
+                      String timeStr = classDoc['time']; // Format: HH:mm AM/PM
+
+                      // Convert date and time to DateTime object
+                      DateTime classDateTime = DateFormat('yyyy-MM-dd hh:mm a')
+                          .parse('$dateStr $timeStr');
+
+                      // Keep classes that have already happened
+                      return classDateTime.isBefore(now);
+                    } catch (e) {
+                      debugPrint("Error parsing date/time: $e");
+                      return false; // Exclude classes with unparseable dates for past classes
+                    }
+                  }).toList();
+
+                  debugPrint(
+                      "${upcomingClasses.length} upcoming classes and ${pastClasses.length} past classes");
+
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.lightbulb,
-                            color: Colors.orange[800], size: 30),
-                        SizedBox(width: 10),
+                        // Upcoming Classes Section
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.school, color: Colors.white, size: 30),
+                              SizedBox(width: 10),
+                              Text(
+                                "Upcoming Classes",
+                                style: GoogleFonts.kanit(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Main scrollable content area with both sections
                         Expanded(
-                          child: Text(
-                            "When a teacher schedules a class, you'll receive a notification!",
-                            style: GoogleFonts.kanit(
-                              fontSize: 14,
-                              color: Colors.orange[800],
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                // Upcoming Classes List or Empty State
+                                upcomingClasses.isEmpty
+                                    ? Container(
+                                        padding: EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: Colors.grey.shade300),
+                                        ),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Icon(Icons.event_busy,
+                                                  size: 48,
+                                                  color: Colors.grey.shade400),
+                                              SizedBox(height: 12),
+                                              Text(
+                                                "No upcoming classes",
+                                                style: GoogleFonts.kanit(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.grey[700],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              Text(
+                                                "All your scheduled classes have finished.",
+                                                style: GoogleFonts.kanit(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[600],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : Column(
+                                        children:
+                                            upcomingClasses.map((classDoc) {
+                                          var classData = classDoc.data()
+                                              as Map<String, dynamic>;
+                                          String classId = classDoc.id;
+
+                                          // Calculate time remaining until class
+                                          DateTime classDateTime = DateFormat(
+                                                  'yyyy-MM-dd hh:mm a')
+                                              .parse(
+                                                  '${classData['date']} ${classData['time']}');
+                                          Duration timeUntil =
+                                              classDateTime.difference(now);
+                                          String timeRemaining = '';
+
+                                          if (timeUntil.inDays > 0) {
+                                            timeRemaining =
+                                                '${timeUntil.inDays} day(s) left';
+                                          } else if (timeUntil.inHours > 0) {
+                                            timeRemaining =
+                                                '${timeUntil.inHours} hour(s) left';
+                                          } else if (timeUntil.inMinutes > 0) {
+                                            timeRemaining =
+                                                '${timeUntil.inMinutes} minute(s) left';
+                                          } else {
+                                            timeRemaining = 'Starting now!';
+                                          }
+
+                                          return UpcomingClassCard(
+                                            classData: classData,
+                                            classId: classId,
+                                            timeUntil: timeUntil,
+                                            timeRemaining: timeRemaining,
+                                            studentId: studentId,
+                                            onJoinClass: _launchURL,
+                                          );
+                                        }).toList(),
+                                      ),
+
+                                SizedBox(height: 24),
+
+                                // Past Classes Section Header
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepPurple,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.history,
+                                          color: Colors.white, size: 30),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        "Class History",
+                                        style: GoogleFonts.kanit(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+
+                                // Past Classes List or Empty State
+                                pastClasses.isEmpty
+                                    ? Container(
+                                        padding: EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: Colors.grey.shade300),
+                                        ),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Icon(Icons.history_toggle_off,
+                                                  size: 48,
+                                                  color: Colors.grey.shade400),
+                                              SizedBox(height: 12),
+                                              Text(
+                                                "No class history",
+                                                style: GoogleFonts.kanit(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.grey[700],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              Text(
+                                                "Your completed classes will appear here",
+                                                style: GoogleFonts.kanit(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[600],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : Column(
+                                        children:
+                                            pastClasses.take(5).map((classDoc) {
+                                          var classData = classDoc.data()
+                                              as Map<String, dynamic>;
+                                          String classId = classDoc.id;
+
+                                          return PastClassCard(
+                                            classData: classData,
+                                            classId: classId,
+                                            studentId: studentId,
+                                            onJoinClass: _launchURL,
+                                          );
+                                        }).toList(),
+                                      ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Get all class IDs the student is enrolled in
-          List<String> enrolledClassIds = enrollmentSnapshot.data!.docs
-              .map((doc) =>
-                  (doc.data() as Map<String, dynamic>)['classId'] as String)
-              .toList();
-
-          // Fetch class details for enrolled classes
-          return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('classes')
-                .where(FieldPath.documentId, whereIn: enrolledClassIds)
-                .snapshots(),
-            builder: (context, classSnapshot) {
-              if (classSnapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              }
-
-              if (!classSnapshot.hasData || classSnapshot.data!.docs.isEmpty) {
-                return Center(child: Text("No class details available"));
-              }
-
-              var classes = classSnapshot.data!.docs;
-
-              // Filter out classes that have already happened
-              DateTime now = DateTime.now();
-              classes = classes.where((classDoc) {
-                try {
-                  String dateStr = classDoc['date']; // Format: yyyy-MM-dd
-                  String timeStr = classDoc['time']; // Format: HH:mm AM/PM
-
-                  // Convert date and time to DateTime object
-                  DateTime classDateTime = DateFormat('yyyy-MM-dd hh:mm a')
-                      .parse('$dateStr $timeStr');
-
-                  // Keep classes that haven't happened yet
-                  return classDateTime.isAfter(now);
-                } catch (e) {
-                  debugPrint("Error parsing date/time: $e");
-                  return true; // Keep classes with unparseable dates by default
-                }
-              }).toList();
-
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.school, color: Colors.white, size: 30),
-                          SizedBox(width: 10),
-                          Text(
-                            "Upcoming Classes",
-                            style: GoogleFonts.kanit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Expanded(
-                      child: classes.isEmpty
-                          ? Center(
-                              child: Text(
-                                "No upcoming classes. All your scheduled classes have finished.",
-                                style: GoogleFonts.kanit(
-                                  fontSize: 16,
-                                  color: Colors.grey[700],
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: classes.length,
-                              itemBuilder: (context, index) {
-                                var classData = classes[index].data()
-                                    as Map<String, dynamic>;
-                                String classId = classes[index].id;
-
-                                // Calculate time remaining until class
-                                DateTime classDateTime =
-                                    DateFormat('yyyy-MM-dd hh:mm a').parse(
-                                        '${classData['date']} ${classData['time']}');
-                                Duration timeUntil =
-                                    classDateTime.difference(now);
-                                String timeRemaining = '';
-
-                                if (timeUntil.inDays > 0) {
-                                  timeRemaining =
-                                      '${timeUntil.inDays} day(s) left';
-                                } else if (timeUntil.inHours > 0) {
-                                  timeRemaining =
-                                      '${timeUntil.inHours} hour(s) left';
-                                } else if (timeUntil.inMinutes > 0) {
-                                  timeRemaining =
-                                      '${timeUntil.inMinutes} minute(s) left';
-                                } else {
-                                  timeRemaining = 'Starting now!';
-                                }
-
-                                return Card(
-                                  margin: EdgeInsets.only(bottom: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  elevation: 4,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: timeUntil.inMinutes < 15
-                                              ? Colors.red
-                                              : Colors.blue,
-                                          borderRadius: BorderRadius.only(
-                                            topLeft: Radius.circular(16),
-                                            topRight: Radius.circular(16),
-                                          ),
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                            vertical: 8, horizontal: 16),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                classData['topic'],
-                                                style: GoogleFonts.kanit(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.3),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                timeRemaining,
-                                                style: GoogleFonts.kanit(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(Icons.person,
-                                                    size: 18,
-                                                    color: Colors.purple),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  "Teacher: ${classData['teacher']}",
-                                                  style: GoogleFonts.kanit(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                Icon(Icons.calendar_today,
-                                                    size: 18,
-                                                    color: Colors.green),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  classData['date'],
-                                                  style: GoogleFonts.kanit(
-                                                      fontSize: 14),
-                                                ),
-                                                SizedBox(width: 12),
-                                                Icon(Icons.access_time,
-                                                    size: 18,
-                                                    color: Colors.orange),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  classData['time'],
-                                                  style: GoogleFonts.kanit(
-                                                      fontSize: 14),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 16),
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: ElevatedButton.icon(
-                                                onPressed:
-                                                    timeUntil.inMinutes < 30
-                                                        ? () => _launchURL(
-                                                            context,
-                                                            classData['link'],
-                                                            classId,
-                                                            currentUser.uid)
-                                                        : null,
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.green,
-                                                  disabledBackgroundColor:
-                                                      Colors.grey,
-                                                  padding: EdgeInsets.symmetric(
-                                                      vertical: 12),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                ),
-                                                icon: Icon(
-                                                  Icons.video_call,
-                                                  color: Colors.white,
-                                                ),
-                                                label: Text(
-                                                  timeUntil.inMinutes < 30
-                                                      ? "Join Class"
-                                                      : "Class starts in ${timeUntil.inHours}h ${timeUntil.inMinutes % 60}m",
-                                                  style: GoogleFonts.kanit(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// Extract UpcomingClassCard to separate widget
+class UpcomingClassCard extends StatelessWidget {
+  final Map<String, dynamic> classData;
+  final String classId;
+  final Duration timeUntil;
+  final String timeRemaining;
+  final String studentId;
+  final Function(BuildContext, String, String, String) onJoinClass;
+
+  const UpcomingClassCard({
+    super.key,
+    required this.classData,
+    required this.classId,
+    required this.timeUntil,
+    required this.timeRemaining,
+    required this.studentId,
+    required this.onJoinClass,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 4,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: timeUntil.inMinutes < 15 ? Colors.red : Colors.blue,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    classData['topic'],
+                    style: GoogleFonts.kanit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    timeRemaining,
+                    style: GoogleFonts.kanit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.blue[700]),
+                    SizedBox(width: 8),
+                    Text(
+                      'Teacher: ${classData['teacher']}',
+                      style: GoogleFonts.kanit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, color: Colors.green[700]),
+                    SizedBox(width: 8),
+                    Text(
+                      classData['date'],
+                      style: GoogleFonts.kanit(fontSize: 14),
+                    ),
+                    SizedBox(width: 16),
+                    Icon(Icons.access_time, color: Colors.orange[700]),
+                    SizedBox(width: 8),
+                    Text(
+                      classData['time'],
+                      style: GoogleFonts.kanit(fontSize: 14),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => onJoinClass(
+                    context,
+                    classData['link'],
+                    classId,
+                    studentId,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        timeUntil.inMinutes < 15 ? Colors.red : Colors.blue,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: Icon(Icons.video_call),
+                  label: Text(
+                    timeUntil.inMinutes < 15 ? 'Join Class Now!' : 'Join Class',
+                    style: GoogleFonts.kanit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Extract PastClassCard to separate widget
+class PastClassCard extends StatelessWidget {
+  final Map<String, dynamic> classData;
+  final String classId;
+  final String studentId;
+  final Function(BuildContext, String, String, String) onJoinClass;
+
+  const PastClassCard({
+    super.key,
+    required this.classData,
+    required this.classId,
+    required this.studentId,
+    required this.onJoinClass,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    classData['topic'],
+                    style: GoogleFonts.kanit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Completed',
+                    style: GoogleFonts.kanit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.grey[600], size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      'Teacher: ${classData['teacher']}',
+                      style: GoogleFonts.kanit(
+                        fontSize: 14,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today,
+                        color: Colors.grey[600], size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      classData['date'],
+                      style: GoogleFonts.kanit(
+                          fontSize: 13, color: Colors.grey[700]),
+                    ),
+                    SizedBox(width: 16),
+                    Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      classData['time'],
+                      style: GoogleFonts.kanit(
+                          fontSize: 13, color: Colors.grey[700]),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => onJoinClass(
+                          context,
+                          classData['link'],
+                          classId,
+                          studentId,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blueGrey,
+                          side: BorderSide(color: Colors.blueGrey),
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        icon: Icon(Icons.video_library, size: 16),
+                        label: Text(
+                          'Recording',
+                          style: GoogleFonts.kanit(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

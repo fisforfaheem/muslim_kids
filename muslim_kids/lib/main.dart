@@ -9,6 +9,9 @@ import 'package:muslim_kids/home_page.dart';
 import 'package:muslim_kids/services/prayer_alarm_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'firebase_notification_service.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -16,28 +19,68 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 Future<void> _requestPermissions() async {
-  // Request notification permission
-  await Permission.notification.request();
+  var notificationStatus = await Permission.notification.request();
+  debugPrint("Notification permission status: $notificationStatus");
+
+  // Request notification permission and show dialog if denied
+  if (notificationStatus != PermissionStatus.granted) {
+    debugPrint("⚠️ Notification permission not granted: $notificationStatus");
+  }
 
   // Request exact alarm permission (for background alarms)
-  if (await Permission.scheduleExactAlarm.isGranted == false) {
-    await Permission.scheduleExactAlarm.request();
+  var alarmStatus = await Permission.scheduleExactAlarm.request();
+  debugPrint("Exact alarm permission status: $alarmStatus");
+  if (alarmStatus != PermissionStatus.granted) {
+    debugPrint("⚠️ Exact alarm permission not granted: $alarmStatus");
   }
 
   // Request ignore battery optimization permission
-  if (await Permission.ignoreBatteryOptimizations.isGranted == false) {
-    await Permission.ignoreBatteryOptimizations.request();
+  var batteryStatus = await Permission.ignoreBatteryOptimizations.request();
+  debugPrint("Battery optimization permission status: $batteryStatus");
+  if (batteryStatus != PermissionStatus.granted) {
+    debugPrint(
+        "⚠️ Battery optimization permission not granted: $batteryStatus");
+  }
+}
+
+Future<void> _setupTimezone() async {
+  tz_data.initializeTimeZones();
+  try {
+    final String timeZone = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZone));
+    debugPrint("🕒 Timezone set to: $timeZone");
+  } catch (e) {
+    debugPrint("⚠️ Error setting timezone: $e");
+    tz.setLocalLocation(tz.getLocation('UTC')); // Fallback to UTC
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Setup timezone first for proper notification scheduling
+  await _setupTimezone();
+
+  // Initialize Firebase
   await Firebase.initializeApp();
+
+  // Request permissions early
+  await _requestPermissions();
+
+  // Initialize notification services
   await FirebaseNotificationService().init();
   await LocalNotificationService.initialize();
 
-  // Request required permissions
-  await _requestPermissions();
+  // Test notification to verify permissions
+  try {
+    await LocalNotificationService.showNotification(
+      id: 999,
+      title: 'Muslim Kids App',
+      body: 'Welcome! Notifications are now set up correctly.',
+    );
+  } catch (e) {
+    debugPrint("⚠️ Error showing test notification: $e");
+  }
 
   // Initialize prayer alarm service
   if (FirebaseAuth.instance.currentUser != null) {
@@ -47,6 +90,7 @@ void main() async {
 
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(const MyApp());
 }
 
@@ -84,6 +128,10 @@ class AuthWrapper extends StatelessWidget {
                   if (userSnapshot.hasData && userSnapshot.data!.exists) {
                     Map<String, dynamic> userData =
                         userSnapshot.data!.data() as Map<String, dynamic>;
+
+                    // Store user data in Firestore with the correct ID
+                    _ensureUserDataConsistency(user, userData);
+
                     String userType = userData['userType'] ?? 'Kid';
                     String email = userData['email'] ?? user.email ?? '';
                     String name = userData['name'] ?? '';
@@ -105,5 +153,28 @@ class AuthWrapper extends StatelessWidget {
         return const WelcomePage();
       },
     );
+  }
+
+  // Ensure user data consistency between Auth UID and Firestore Document ID
+  Future<void> _ensureUserDataConsistency(
+      User user, Map<String, dynamic> userData) async {
+    try {
+      // Check if we need to create a document with UID as document ID
+      final docRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        // Create a new document with the user's UID as the document ID
+        await docRef.set({
+          ...userData,
+          'email': user.email ?? userData['email'] ?? '',
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+        debugPrint("Created user document with UID: ${user.uid}");
+      }
+    } catch (e) {
+      debugPrint("Error ensuring user data consistency: $e");
+    }
   }
 }
