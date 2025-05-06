@@ -45,8 +45,12 @@ class LiveClassesPage extends StatelessWidget {
     }
   }
 
-  void _launchURL(BuildContext context, String link, String classId,
-      String studentId) async {
+  void _launchURL(
+    BuildContext context,
+    String link,
+    String classId,
+    String studentId,
+  ) async {
     if (link.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No class link provided by teacher')),
@@ -70,9 +74,9 @@ class LiveClassesPage extends StatelessWidget {
     // Try to parse the URL
     final Uri? uri = Uri.tryParse(processedLink);
     if (uri == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid class link format')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Invalid class link format')));
       return;
     }
 
@@ -84,10 +88,10 @@ class LiveClassesPage extends StatelessWidget {
           .where('studentId', isEqualTo: studentId)
           .get()
           .then((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          snapshot.docs.first.reference.update({'hasJoined': true});
-        }
-      });
+            if (snapshot.docs.isNotEmpty) {
+              snapshot.docs.first.reference.update({'hasJoined': true});
+            }
+          });
     } catch (e) {
       debugPrint("Error updating join status: $e");
       // Continue with launch attempt even if update fails
@@ -102,17 +106,11 @@ class LiveClassesPage extends StatelessWidget {
 
       // WhatsApp links need special handling
       if (uri.toString().contains('whatsapp')) {
-        launched = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
       // Zoom links
       else if (uri.toString().contains('zoom')) {
-        launched = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
       // All other URLs
       else {
@@ -131,7 +129,8 @@ class LiveClassesPage extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Could not open the class link. Please try again or contact your teacher.'),
+                'Could not open the class link. Please try again or contact your teacher.',
+              ),
               duration: Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'Copy Link',
@@ -185,9 +184,7 @@ class LiveClassesPage extends StatelessWidget {
           title: Text('Live Classes'),
           backgroundColor: Colors.pink[200],
         ),
-        body: Center(
-          child: Text('Please log in to view your classes'),
-        ),
+        body: Center(child: Text('Please log in to view your classes')),
       );
     }
 
@@ -223,10 +220,11 @@ class LiveClassesPage extends StatelessWidget {
       ),
       body: FutureBuilder<DocumentSnapshot>(
         // First get the user document to get the proper studentId
-        future: FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .get(),
+        future:
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .get(),
         builder: (context, userSnapshot) {
           if (userSnapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -246,16 +244,17 @@ class LiveClassesPage extends StatelessWidget {
           String studentId = userSnapshot.data!.id;
           String studentName =
               (userSnapshot.data!.data() as Map<String, dynamic>)['name'] ??
-                  'Student';
+              'Student';
 
           debugPrint("Looking for classes for student ID: $studentId");
 
           // Try both UID and document ID for backward compatibility
           return FutureBuilder<QuerySnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('class_enrollments')
-                .where('studentId',
-                    whereIn: [studentId, currentUser.uid]).get(),
+            future:
+                FirebaseFirestore.instance
+                    .collection('class_enrollments')
+                    .where('studentId', whereIn: [studentId, currentUser.uid])
+                    .get(),
             builder: (context, enrollmentSnapshot) {
               if (enrollmentSnapshot.connectionState ==
                   ConnectionState.waiting) {
@@ -271,11 +270,12 @@ class LiveClassesPage extends StatelessWidget {
                       Image.asset(
                         'assets/no_classes.png',
                         height: 120,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.school_outlined,
-                          size: 80,
-                          color: Colors.grey,
-                        ),
+                        errorBuilder:
+                            (context, error, stackTrace) => Icon(
+                              Icons.school_outlined,
+                              size: 80,
+                              color: Colors.grey,
+                            ),
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -309,8 +309,11 @@ class LiveClassesPage extends StatelessWidget {
                         margin: EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            Icon(Icons.lightbulb,
-                                color: Colors.orange[800], size: 30),
+                            Icon(
+                              Icons.lightbulb,
+                              color: Colors.orange[800],
+                              size: 30,
+                            ),
                             SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -330,13 +333,18 @@ class LiveClassesPage extends StatelessWidget {
               }
 
               // Get all class IDs the student is enrolled in
-              List<String> enrolledClassIds = enrollmentSnapshot.data!.docs
-                  .map((doc) =>
-                      (doc.data() as Map<String, dynamic>)['classId'] as String)
-                  .toList();
+              List<String> enrolledClassIds =
+                  enrollmentSnapshot.data!.docs
+                      .map(
+                        (doc) =>
+                            (doc.data() as Map<String, dynamic>)['classId']
+                                as String,
+                      )
+                      .toList();
 
               debugPrint(
-                  "Found ${enrolledClassIds.length} enrolled classes for student: $studentName");
+                "Found ${enrolledClassIds.length} enrolled classes for student: $studentName",
+              );
 
               // Display message if no enrolled classes found
               if (enrolledClassIds.isEmpty) {
@@ -351,10 +359,11 @@ class LiveClassesPage extends StatelessWidget {
 
               // Fetch class details for enrolled classes
               return StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('classes')
-                    .where(FieldPath.documentId, whereIn: enrolledClassIds)
-                    .snapshots(),
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('classes')
+                        .where(FieldPath.documentId, whereIn: enrolledClassIds)
+                        .snapshots(),
                 builder: (context, classSnapshot) {
                   if (classSnapshot.connectionState ==
                       ConnectionState.waiting) {
@@ -365,7 +374,7 @@ class LiveClassesPage extends StatelessWidget {
                       classSnapshot.data!.docs.isEmpty) {
                     return Center(
                       child: Text(
-                        "No class details available. Please contact support.",
+                        "No live class scheduled!",
                         style: GoogleFonts.kanit(fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
@@ -383,10 +392,12 @@ class LiveClassesPage extends StatelessWidget {
                       String dateB = b['date']; // Format: yyyy-MM-dd
                       String timeB = b['time']; // Format: HH:mm AM/PM
 
-                      DateTime dateTimeA = DateFormat('yyyy-MM-dd hh:mm a')
-                          .parse('$dateA $timeA');
-                      DateTime dateTimeB = DateFormat('yyyy-MM-dd hh:mm a')
-                          .parse('$dateB $timeB');
+                      DateTime dateTimeA = DateFormat(
+                        'yyyy-MM-dd hh:mm a',
+                      ).parse('$dateA $timeA');
+                      DateTime dateTimeB = DateFormat(
+                        'yyyy-MM-dd hh:mm a',
+                      ).parse('$dateB $timeB');
 
                       return dateTimeB.compareTo(dateTimeA); // Descending order
                     } catch (e) {
@@ -396,43 +407,52 @@ class LiveClassesPage extends StatelessWidget {
 
                   // Filter out classes based on current time
                   DateTime now = DateTime.now();
-                  var upcomingClasses = allClasses.where((classDoc) {
-                    try {
-                      String dateStr = classDoc['date']; // Format: yyyy-MM-dd
-                      String timeStr = classDoc['time']; // Format: HH:mm AM/PM
+                  var upcomingClasses =
+                      allClasses.where((classDoc) {
+                        try {
+                          String dateStr =
+                              classDoc['date']; // Format: yyyy-MM-dd
+                          String timeStr =
+                              classDoc['time']; // Format: HH:mm AM/PM
 
-                      // Convert date and time to DateTime object
-                      DateTime classDateTime = DateFormat('yyyy-MM-dd hh:mm a')
-                          .parse('$dateStr $timeStr');
+                          // Convert date and time to DateTime object
+                          DateTime classDateTime = DateFormat(
+                            'yyyy-MM-dd hh:mm a',
+                          ).parse('$dateStr $timeStr');
 
-                      // Keep classes that haven't happened yet
-                      return classDateTime.isAfter(now);
-                    } catch (e) {
-                      debugPrint("Error parsing date/time: $e");
-                      return true; // Keep classes with unparseable dates by default
-                    }
-                  }).toList();
+                          // Keep classes that haven't happened yet
+                          return classDateTime.isAfter(now);
+                        } catch (e) {
+                          debugPrint("Error parsing date/time: $e");
+                          return true; // Keep classes with unparseable dates by default
+                        }
+                      }).toList();
 
                   // Filter past classes (classes that have already happened)
-                  var pastClasses = allClasses.where((classDoc) {
-                    try {
-                      String dateStr = classDoc['date']; // Format: yyyy-MM-dd
-                      String timeStr = classDoc['time']; // Format: HH:mm AM/PM
+                  var pastClasses =
+                      allClasses.where((classDoc) {
+                        try {
+                          String dateStr =
+                              classDoc['date']; // Format: yyyy-MM-dd
+                          String timeStr =
+                              classDoc['time']; // Format: HH:mm AM/PM
 
-                      // Convert date and time to DateTime object
-                      DateTime classDateTime = DateFormat('yyyy-MM-dd hh:mm a')
-                          .parse('$dateStr $timeStr');
+                          // Convert date and time to DateTime object
+                          DateTime classDateTime = DateFormat(
+                            'yyyy-MM-dd hh:mm a',
+                          ).parse('$dateStr $timeStr');
 
-                      // Keep classes that have already happened
-                      return classDateTime.isBefore(now);
-                    } catch (e) {
-                      debugPrint("Error parsing date/time: $e");
-                      return false; // Exclude classes with unparseable dates for past classes
-                    }
-                  }).toList();
+                          // Keep classes that have already happened
+                          return classDateTime.isBefore(now);
+                        } catch (e) {
+                          debugPrint("Error parsing date/time: $e");
+                          return false; // Exclude classes with unparseable dates for past classes
+                        }
+                      }).toList();
 
                   debugPrint(
-                      "${upcomingClasses.length} upcoming classes and ${pastClasses.length} past classes");
+                    "${upcomingClasses.length} upcoming classes and ${pastClasses.length} past classes",
+                  );
 
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -471,81 +491,86 @@ class LiveClassesPage extends StatelessWidget {
                                 // Upcoming Classes List or Empty State
                                 upcomingClasses.isEmpty
                                     ? Container(
-                                        padding: EdgeInsets.all(20),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: Colors.grey.shade300),
+                                      padding: EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
                                         ),
-                                        child: Center(
-                                          child: Column(
-                                            children: [
-                                              Icon(Icons.event_busy,
-                                                  size: 48,
-                                                  color: Colors.grey.shade400),
-                                              SizedBox(height: 12),
-                                              Text(
-                                                "No upcoming classes",
-                                                style: GoogleFonts.kanit(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.grey[700],
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              Text(
-                                                "All your scheduled classes have finished.",
-                                                style: GoogleFonts.kanit(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[600],
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      )
-                                    : Column(
-                                        children:
-                                            upcomingClasses.map((classDoc) {
-                                          var classData = classDoc.data()
-                                              as Map<String, dynamic>;
-                                          String classId = classDoc.id;
-
-                                          // Calculate time remaining until class
-                                          DateTime classDateTime = DateFormat(
-                                                  'yyyy-MM-dd hh:mm a')
-                                              .parse(
-                                                  '${classData['date']} ${classData['time']}');
-                                          Duration timeUntil =
-                                              classDateTime.difference(now);
-                                          String timeRemaining = '';
-
-                                          if (timeUntil.inDays > 0) {
-                                            timeRemaining =
-                                                '${timeUntil.inDays} day(s) left';
-                                          } else if (timeUntil.inHours > 0) {
-                                            timeRemaining =
-                                                '${timeUntil.inHours} hour(s) left';
-                                          } else if (timeUntil.inMinutes > 0) {
-                                            timeRemaining =
-                                                '${timeUntil.inMinutes} minute(s) left';
-                                          } else {
-                                            timeRemaining = 'Starting now!';
-                                          }
-
-                                          return UpcomingClassCard(
-                                            classData: classData,
-                                            classId: classId,
-                                            timeUntil: timeUntil,
-                                            timeRemaining: timeRemaining,
-                                            studentId: studentId,
-                                            onJoinClass: _launchURL,
-                                          );
-                                        }).toList(),
                                       ),
+                                      child: Center(
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.event_busy,
+                                              size: 48,
+                                              color: Colors.grey.shade400,
+                                            ),
+                                            SizedBox(height: 12),
+                                            Text(
+                                              "No upcoming classes",
+                                              style: GoogleFonts.kanit(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey[700],
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            Text(
+                                              "All your scheduled classes have finished.",
+                                              style: GoogleFonts.kanit(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    : Column(
+                                      children:
+                                          upcomingClasses.map((classDoc) {
+                                            var classData =
+                                                classDoc.data()
+                                                    as Map<String, dynamic>;
+                                            String classId = classDoc.id;
+
+                                            // Calculate time remaining until class
+                                            DateTime classDateTime = DateFormat(
+                                              'yyyy-MM-dd hh:mm a',
+                                            ).parse(
+                                              '${classData['date']} ${classData['time']}',
+                                            );
+                                            Duration timeUntil = classDateTime
+                                                .difference(now);
+                                            String timeRemaining = '';
+
+                                            if (timeUntil.inDays > 0) {
+                                              timeRemaining =
+                                                  '${timeUntil.inDays} day(s) left';
+                                            } else if (timeUntil.inHours > 0) {
+                                              timeRemaining =
+                                                  '${timeUntil.inHours} hour(s) left';
+                                            } else if (timeUntil.inMinutes >
+                                                0) {
+                                              timeRemaining =
+                                                  '${timeUntil.inMinutes} minute(s) left';
+                                            } else {
+                                              timeRemaining = 'Starting now!';
+                                            }
+
+                                            return UpcomingClassCard(
+                                              classData: classData,
+                                              classId: classId,
+                                              timeUntil: timeUntil,
+                                              timeRemaining: timeRemaining,
+                                              studentId: studentId,
+                                              onJoinClass: _launchURL,
+                                            );
+                                          }).toList(),
+                                    ),
 
                                 SizedBox(height: 24),
 
@@ -558,8 +583,11 @@ class LiveClassesPage extends StatelessWidget {
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.history,
-                                          color: Colors.white, size: 30),
+                                      Icon(
+                                        Icons.history,
+                                        color: Colors.white,
+                                        size: 30,
+                                      ),
                                       SizedBox(width: 10),
                                       Text(
                                         "Class History",
@@ -577,57 +605,60 @@ class LiveClassesPage extends StatelessWidget {
                                 // Past Classes List or Empty State
                                 pastClasses.isEmpty
                                     ? Container(
-                                        padding: EdgeInsets.all(20),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: Colors.grey.shade300),
+                                      padding: EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
                                         ),
-                                        child: Center(
-                                          child: Column(
-                                            children: [
-                                              Icon(Icons.history_toggle_off,
-                                                  size: 48,
-                                                  color: Colors.grey.shade400),
-                                              SizedBox(height: 12),
-                                              Text(
-                                                "No class history",
-                                                style: GoogleFonts.kanit(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.grey[700],
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              Text(
-                                                "Your completed classes will appear here",
-                                                style: GoogleFonts.kanit(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[600],
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      )
-                                    : Column(
-                                        children:
-                                            pastClasses.take(5).map((classDoc) {
-                                          var classData = classDoc.data()
-                                              as Map<String, dynamic>;
-                                          String classId = classDoc.id;
-
-                                          return PastClassCard(
-                                            classData: classData,
-                                            classId: classId,
-                                            studentId: studentId,
-                                            onJoinClass: _launchURL,
-                                          );
-                                        }).toList(),
                                       ),
+                                      child: Center(
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.history_toggle_off,
+                                              size: 48,
+                                              color: Colors.grey.shade400,
+                                            ),
+                                            SizedBox(height: 12),
+                                            Text(
+                                              "No class history",
+                                              style: GoogleFonts.kanit(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey[700],
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            Text(
+                                              "Your completed classes will appear here",
+                                              style: GoogleFonts.kanit(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    : Column(
+                                      children:
+                                          pastClasses.take(5).map((classDoc) {
+                                            var classData =
+                                                classDoc.data()
+                                                    as Map<String, dynamic>;
+                                            String classId = classDoc.id;
+
+                                            return PastClassCard(
+                                              classData: classData,
+                                              classId: classId,
+                                              studentId: studentId,
+                                              onJoinClass: _launchURL,
+                                            );
+                                          }).toList(),
+                                    ),
                               ],
                             ),
                           ),
@@ -668,9 +699,7 @@ class UpcomingClassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -754,12 +783,13 @@ class UpcomingClassCard extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: () => onJoinClass(
-                    context,
-                    classData['link'],
-                    classId,
-                    studentId,
-                  ),
+                  onPressed:
+                      () => onJoinClass(
+                        context,
+                        classData['link'],
+                        classId,
+                        studentId,
+                      ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         timeUntil.inMinutes < 15 ? Colors.red : Colors.blue,
@@ -806,9 +836,7 @@ class PastClassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -875,13 +903,18 @@ class PastClassCard extends StatelessWidget {
                 SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today,
-                        color: Colors.grey[600], size: 16),
+                    Icon(
+                      Icons.calendar_today,
+                      color: Colors.grey[600],
+                      size: 16,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       classData['date'],
                       style: GoogleFonts.kanit(
-                          fontSize: 13, color: Colors.grey[700]),
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                      ),
                     ),
                     SizedBox(width: 16),
                     Icon(Icons.access_time, color: Colors.grey[600], size: 16),
@@ -889,31 +922,8 @@ class PastClassCard extends StatelessWidget {
                     Text(
                       classData['time'],
                       style: GoogleFonts.kanit(
-                          fontSize: 13, color: Colors.grey[700]),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => onJoinClass(
-                          context,
-                          classData['link'],
-                          classId,
-                          studentId,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blueGrey,
-                          side: BorderSide(color: Colors.blueGrey),
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        icon: Icon(Icons.video_library, size: 16),
-                        label: Text(
-                          'Recording',
-                          style: GoogleFonts.kanit(fontSize: 14),
-                        ),
+                        fontSize: 13,
+                        color: Colors.grey[700],
                       ),
                     ),
                   ],

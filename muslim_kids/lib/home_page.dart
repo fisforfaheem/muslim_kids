@@ -9,6 +9,7 @@ import 'package:muslim_kids/Features/progress_page.dart';
 import 'package:muslim_kids/Features/quizzes_page.dart';
 import 'package:muslim_kids/Features/settings_page.dart';
 import 'package:muslim_kids/Features/videos_page.dart';
+import 'package:muslim_kids/widgets/islamic_header.dart';
 import 'teacher_home_page.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -403,104 +404,11 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
       backgroundColor: const Color.fromARGB(255, 255, 244, 143),
       extendBody:
           true, // Make the body content extend behind the bottomNavigationBar
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF1F4E5F),
-                Color(0xFF2E7D32),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(25),
-              bottomRight: Radius.circular(25),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 6,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.amber, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.amber.withOpacity(0.3),
-                              blurRadius: 5,
-                              spreadRadius: 1,
-                            )
-                          ],
-                        ),
-                      ),
-                      CircleAvatar(
-                        backgroundImage:
-                            AssetImage(userAvatar ?? 'assets/avatar2.jpg'),
-                        radius: 20,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          isLoading
-                              ? 'Loading...'
-                              : 'Welcome, ${userName ?? 'User'}!',
-                          style: GoogleFonts.quicksand(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'May Allah bless your day',
-                          style: GoogleFonts.quicksand(
-                            fontSize: 12,
-                            color: Colors.amber[100],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon:
-                          Icon(Icons.logout_rounded, color: Colors.amber[100]),
-                      onPressed: _logout,
-                      tooltip: 'Logout',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      appBar: IslamicHeader(
+        avatarPath: userAvatar,
+        userName: userName ?? 'User',
+        isLoading: isLoading,
+        onLogoutPressed: _logout,
       ),
       body: SafeArea(
         child: Padding(

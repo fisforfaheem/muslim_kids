@@ -85,7 +85,7 @@ class QuizzesPageState extends State<QuizzesPage>
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 244, 143),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: const Size.fromHeight(120),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.pink[200],

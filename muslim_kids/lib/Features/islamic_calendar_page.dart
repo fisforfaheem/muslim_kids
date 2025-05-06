@@ -83,9 +83,9 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 244, 143),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 88, 144),
+        backgroundColor: const Color(0xFF1F4E5F),
         title: const Text(
           'Islamic Calendar',
           style: TextStyle(
@@ -97,7 +97,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
           onPressed: () => Navigator.pop(context),
         ),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(),
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(15),
+            bottomRight: Radius.circular(15),
+          ),
         ),
         elevation: 4,
       ),
@@ -121,9 +124,13 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
 
   Widget _buildDateHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: const BoxDecoration(
-        color: Color.fromARGB(255, 255, 129, 171),
+        gradient: LinearGradient(
+          colors: [Color(0xFF1F4E5F), Color(0xFF2E7D32)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -134,10 +141,11 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
               const Text(
                 "Hijri Date",
                 style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
+                    color: Colors.amber,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 4),
               Text(
                 _selectedHijriDay.toFormat("d MMMM yyyy"),
                 style: const TextStyle(
@@ -154,10 +162,11 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
               const Text(
                 "Gregorian Date",
                 style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
+                    color: Colors.amber,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 4),
               Text(
                 DateFormat('MMMM d, yyyy').format(_selectedDay),
                 style: const TextStyle(
@@ -174,42 +183,41 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
   }
 
   Widget _buildMonthNavigator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.yellow.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          ElevatedButton(
+          IconButton(
             onPressed: _previousMonth,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            child: const Text("< Previous",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+            icon: const Icon(Icons.chevron_left, size: 28),
+            color: const Color(0xFF1F4E5F),
+            tooltip: "Previous Month",
           ),
           Text(
             DateFormat('MMMM yyyy').format(_focusedDay),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          ElevatedButton(
-            onPressed: _nextMonth,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F4E5F),
             ),
-            child: const Text("Next >",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+          ),
+          IconButton(
+            onPressed: _nextMonth,
+            icon: const Icon(Icons.chevron_right, size: 28),
+            color: const Color(0xFF1F4E5F),
+            tooltip: "Next Month",
           ),
         ],
       ),
@@ -217,49 +225,72 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
   }
 
   Widget _buildCalendar() {
-    return TableCalendar(
-      firstDay: DateTime(2000, 1, 1),
-      lastDay: DateTime(2100, 12, 31),
-      focusedDay: _focusedDay,
-      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-      onDaySelected: _onDaySelected,
-      calendarFormat: CalendarFormat.month,
-      headerVisible: false,
-      availableGestures: AvailableGestures.all,
-      rowHeight: 65, // Reduced height to prevent overflow
-      daysOfWeekHeight: 30, // Reduced height of day headers
-      daysOfWeekStyle: const DaysOfWeekStyle(
-        weekdayStyle: TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-        weekendStyle: TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
-        decoration: BoxDecoration(
-            color: Color(0xFFFFF8D9)), // Subtle background for day names
+    return Container(
+      margin: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      calendarStyle: const CalendarStyle(
-        outsideDaysVisible: false,
-        cellMargin: EdgeInsets.all(1), // Reduced margins for more space
-        defaultTextStyle: TextStyle(fontSize: 0), // Hide default text
-        weekendTextStyle: TextStyle(fontSize: 0), // Hide default text
-        selectedTextStyle: TextStyle(fontSize: 0), // Hide default text
-        todayTextStyle: TextStyle(fontSize: 0), // Hide default text
-      ),
-      calendarBuilders: CalendarBuilders(
-        defaultBuilder: (context, date, _) {
-          return _buildCalendarCell(date, false, false);
-        },
-        selectedBuilder: (context, date, _) {
-          return _buildCalendarCell(date, true, false);
-        },
-        todayBuilder: (context, date, _) {
-          return _buildCalendarCell(date, false, true);
-        },
-        outsideBuilder: (context, date, _) {
-          return const SizedBox.shrink(); // Hide outside days
-        },
-        disabledBuilder: (context, date, _) {
-          return const SizedBox.shrink(); // Hide disabled days
-        },
+      child: TableCalendar(
+        firstDay: DateTime(2000, 1, 1),
+        lastDay: DateTime(2100, 12, 31),
+        focusedDay: _focusedDay,
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        onDaySelected: _onDaySelected,
+        calendarFormat: CalendarFormat.month,
+        headerVisible: false,
+        availableGestures: AvailableGestures.all,
+        rowHeight: 70,
+        daysOfWeekHeight: 30,
+        daysOfWeekStyle: DaysOfWeekStyle(
+          weekdayStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1F4E5F),
+          ),
+          weekendStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.amber[800],
+          ),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        calendarStyle: const CalendarStyle(
+          outsideDaysVisible: false,
+          cellMargin: EdgeInsets.all(2),
+          defaultTextStyle: TextStyle(fontSize: 0),
+          weekendTextStyle: TextStyle(fontSize: 0),
+          selectedTextStyle: TextStyle(fontSize: 0),
+          todayTextStyle: TextStyle(fontSize: 0),
+        ),
+        calendarBuilders: CalendarBuilders(
+          defaultBuilder: (context, date, _) {
+            return _buildCalendarCell(date, false, false);
+          },
+          selectedBuilder: (context, date, _) {
+            return _buildCalendarCell(date, true, false);
+          },
+          todayBuilder: (context, date, _) {
+            return _buildCalendarCell(date, false, true);
+          },
+          outsideBuilder: (context, date, _) {
+            return const SizedBox.shrink();
+          },
+          disabledBuilder: (context, date, _) {
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
@@ -273,89 +304,91 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
     bool isSignificant = _eventsMap.containsKey(hijriKey);
 
     // Cell background color based on state
-    Color? backgroundColor;
+    Color backgroundColor;
     if (isSelected) {
-      backgroundColor = Colors.pink;
+      backgroundColor = const Color(0xFF1F4E5F);
     } else if (isSignificant) {
-      backgroundColor = Colors.amber[100];
+      backgroundColor = Colors.amber.withOpacity(0.15);
     } else if (isToday) {
-      backgroundColor = Colors.blue[100];
+      backgroundColor = const Color(0xFF2E7D32).withOpacity(0.1);
     } else {
       backgroundColor = Colors.white;
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      margin: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(6.0),
+        borderRadius: BorderRadius.circular(8.0),
         border: isToday && !isSelected
-            ? Border.all(color: Colors.blue, width: 1.5)
-            : null,
+            ? Border.all(color: const Color(0xFF2E7D32), width: 1.5)
+            : Border.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
         boxShadow: [
           if (isSignificant && !isSelected)
-            const BoxShadow(
-              color: Colors.amber,
-              blurRadius: 1,
+            BoxShadow(
+              color: Colors.amber.withOpacity(0.3),
+              blurRadius: 2,
               spreadRadius: 0.5,
             ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
         children: [
-          // Gregorian day number
-          Text(
-            date.day.toString(),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isSelected
-                  ? Colors.white
-                  : isSignificant
-                      ? Colors.amber[800]
-                      : isToday
-                          ? Colors.blue[800]
-                          : Colors.black,
-            ),
-          ),
-          const SizedBox(height: 2),
-          // Hijri day number in a more visible circle
-          Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.white.withOpacity(0.3)
-                  : isSignificant
-                      ? Colors.amber.withOpacity(0.2)
-                      : Colors.grey[200],
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              hijriDate.hDay.toString(),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isSelected
-                    ? Colors.white
-                    : isSignificant
-                        ? Colors.amber[800]
-                        : Colors.grey[700],
-              ),
-            ),
-          ),
-          // Star icon for significant days
-          if (isSignificant && !isSelected)
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
+          if (isSignificant)
+            Positioned(
+              top: 2,
+              right: 2,
               child: Icon(
                 Icons.star,
-                color: Colors.amber,
+                color: Colors.amber[700],
                 size: 10,
               ),
             ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Gregorian day number
+              Text(
+                date.day.toString(),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                      ? Colors.white
+                      : isSignificant
+                          ? Colors.amber[800]
+                          : isToday
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFF1F4E5F),
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Hijri day number in a subtle container
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.2)
+                      : isSignificant
+                          ? Colors.amber.withOpacity(0.1)
+                          : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  hijriDate.hDay.toString(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : isSignificant
+                            ? Colors.amber[800]
+                            : Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

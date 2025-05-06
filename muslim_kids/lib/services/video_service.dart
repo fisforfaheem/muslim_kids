@@ -35,11 +35,74 @@ class VideoService {
       youtubeUrl: 'https://www.youtube.com/watch?v=KfDsedlR6F0',
       category: 'Values',
     ),
+    // New videos added from user's request
+    IslamicVideo.fromYoutubeUrl(
+      id: '5',
+      title: 'Prophet Yusuf\'s Story - Part 1',
+      description:
+          'The beautiful story of Prophet Yusuf (Joseph) in Islam for children',
+      youtubeUrl: 'https://youtu.be/NC1eXike1jY',
+      category: 'Prophet Stories',
+    ),
+    IslamicVideo.fromYoutubeUrl(
+      id: '6',
+      title: 'Islamic Animated Movies for Kids',
+      description:
+          'Educational Islamic cartoon movie for children to learn about faith',
+      youtubeUrl: 'https://youtu.be/Ka3YJJybUVo',
+      category: 'Moral Stories',
+    ),
+    IslamicVideo.fromYoutubeUrl(
+      id: '7',
+      title: 'Prophet Muhammad\'s Life Story',
+      description:
+          'Learning about the life of Prophet Muhammad (PBUH) through animation',
+      youtubeUrl: 'https://youtu.be/YxaQS9rZNZg',
+      category: 'Prophet Stories',
+    ),
+    IslamicVideo.fromYoutubeUrl(
+      id: '8',
+      title: 'Islamic Moral Values for Children',
+      description:
+          'Teaching key Islamic moral values to children in an engaging way',
+      youtubeUrl: 'https://youtu.be/7iuQI1Izh5o',
+      category: 'Values',
+    ),
+    IslamicVideo.fromYoutubeUrl(
+      id: '9',
+      title: 'Islamic Etiquette for Kids',
+      description:
+          'Learn about proper Islamic manners and etiquette for daily life',
+      youtubeUrl: 'https://youtu.be/97EnwQ9rFN4',
+      category: 'Manners',
+    ),
+    IslamicVideo.fromYoutubeUrl(
+      id: '10',
+      title: 'Quran Stories for Children',
+      description:
+          'Beautiful animated stories from the Holy Quran for young Muslims',
+      youtubeUrl: 'https://youtu.be/u2e2Uk4qEXs',
+      category: 'Moral Stories',
+    ),
+    IslamicVideo.fromYoutubeUrl(
+      id: '11',
+      title: 'Prayer Teaching for Kids',
+      description:
+          'Teaching children how to pray properly in Islam with animation',
+      youtubeUrl: 'https://youtu.be/d5KZoyua3O8',
+      category: 'Values',
+    ),
   ];
 
   // Get videos from Firestore or return sample videos if none exist
-  Future<List<IslamicVideo>> getIslamicVideos() async {
+  Future<List<IslamicVideo>> getIslamicVideos(
+      {bool forceRefresh = false}) async {
     try {
+      // If force refresh is true, clear Firestore and reload all videos
+      if (forceRefresh) {
+        await _clearAndReuploadAllVideos();
+      }
+
       QuerySnapshot querySnapshot =
           await _firestore.collection(_collectionName).get();
 
@@ -58,6 +121,29 @@ class VideoService {
       print('Error getting videos: $e');
       // Return sample videos if there's an error
       return _sampleVideos;
+    }
+  }
+
+  // Clear all videos and reupload them to Firestore
+  Future<void> _clearAndReuploadAllVideos() async {
+    try {
+      // Get all documents in the collection
+      QuerySnapshot querySnapshot =
+          await _firestore.collection(_collectionName).get();
+
+      // Delete all existing documents
+      WriteBatch deleteBatch = _firestore.batch();
+      for (var doc in querySnapshot.docs) {
+        deleteBatch.delete(doc.reference);
+      }
+      await deleteBatch.commit();
+      print('Cleared all videos from Firestore');
+
+      // Upload all sample videos
+      await _uploadSampleVideosToFirestore();
+      print('Reuploaded all videos to Firestore');
+    } catch (e) {
+      print('Error clearing and reuploading videos: $e');
     }
   }
 

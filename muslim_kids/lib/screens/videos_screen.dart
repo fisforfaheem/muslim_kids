@@ -10,38 +10,28 @@ class VideosScreen extends StatefulWidget {
   State<VideosScreen> createState() => _VideosScreenState();
 }
 
-class _VideosScreenState extends State<VideosScreen>
-    with SingleTickerProviderStateMixin {
+class _VideosScreenState extends State<VideosScreen> {
   final VideoService _videoService = VideoService();
-  late TabController _tabController;
   List<IslamicVideo> _allVideos = [];
   bool _isLoading = true;
   String _errorMessage = '';
-
-  // Categories for tab filtering
-  final List<String> _categories = [
-    'All',
-    'Moral Stories',
-    'Prophet Stories',
-    'Manners',
-    'Values',
-  ];
+  bool _showNewVideoBadge = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _categories.length, vsync: this);
     _loadVideos();
   }
 
-  Future<void> _loadVideos() async {
+  Future<void> _loadVideos({bool forceRefresh = false}) async {
     try {
       setState(() {
         _isLoading = true;
         _errorMessage = '';
       });
 
-      final videos = await _videoService.getIslamicVideos();
+      final videos =
+          await _videoService.getIslamicVideos(forceRefresh: forceRefresh);
 
       setState(() {
         _allVideos = videos;
@@ -55,34 +45,64 @@ class _VideosScreenState extends State<VideosScreen>
     }
   }
 
-  List<IslamicVideo> _getFilteredVideos(String category) {
-    if (category == 'All') {
-      return _allVideos;
-    } else {
-      return _allVideos.where((video) => video.category == category).toList();
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Islamic Videos'),
         backgroundColor: Colors.green[700],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-          tabs: _categories.map((category) => Tab(text: category)).toList(),
-        ),
+        actions: [
+          if (_showNewVideoBadge)
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.new_releases),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('7 new Islamic videos have been added!'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                      // Hide the badge after showing the message
+                      setState(() {
+                        _showNewVideoBadge = false;
+                      });
+                    },
+                  ),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: const Text(
+                        '7',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -104,37 +124,30 @@ class _VideosScreenState extends State<VideosScreen>
                     ],
                   ),
                 )
-              : TabBarView(
-                  controller: _tabController,
-                  children: _categories.map((category) {
-                    final filteredVideos = _getFilteredVideos(category);
-                    return filteredVideos.isEmpty
-                        ? const Center(
-                            child: Text('No videos in this category'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(8),
-                            itemCount: filteredVideos.length,
-                            itemBuilder: (context, index) {
-                              final video = filteredVideos[index];
-                              return VideoCard(
-                                video: video,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => VideoPlayerScreen(
-                                        video: video,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                  }).toList(),
-                ),
+              : _allVideos.isEmpty
+                  ? const Center(child: Text('No videos available'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(8),
+                      itemCount: _allVideos.length,
+                      itemBuilder: (context, index) {
+                        final video = _allVideos[index];
+                        return VideoCard(
+                          video: video,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VideoPlayerScreen(
+                                  video: video,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _loadVideos,
+        onPressed: () => _loadVideos(forceRefresh: true),
         backgroundColor: Colors.green[700],
         child: const Icon(Icons.refresh),
       ),
