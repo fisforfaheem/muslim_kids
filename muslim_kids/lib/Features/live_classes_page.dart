@@ -80,18 +80,36 @@ class LiveClassesPage extends StatelessWidget {
       return;
     }
 
-    // Update the join status in Firestore
+    // Update the join status in Firestore - use direct document ID for efficiency
     try {
-      await FirebaseFirestore.instance
+      // Try to update using the combined document ID format first
+      final docRef = FirebaseFirestore.instance
           .collection('class_enrollments')
-          .where('classId', isEqualTo: classId)
-          .where('studentId', isEqualTo: studentId)
-          .get()
-          .then((snapshot) {
-            if (snapshot.docs.isNotEmpty) {
-              snapshot.docs.first.reference.update({'hasJoined': true});
-            }
-          });
+          .doc('${classId}_$studentId');
+
+      final docSnapshot = await docRef.get();
+
+      if (docSnapshot.exists) {
+        // Document exists with the expected ID format
+        await docRef.update({'hasJoined': true});
+      } else {
+        // Fallback to query if document not found with the expected ID
+        final querySnapshot =
+            await FirebaseFirestore.instance
+                .collection('class_enrollments')
+                .where('classId', isEqualTo: classId)
+                .where('studentId', isEqualTo: studentId)
+                .limit(1)
+                .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          await querySnapshot.docs.first.reference.update({'hasJoined': true});
+        } else {
+          debugPrint(
+            "No enrollment found for student $studentId in class $classId",
+          );
+        }
+      }
     } catch (e) {
       debugPrint("Error updating join status: $e");
       // Continue with launch attempt even if update fails
@@ -248,12 +266,12 @@ class LiveClassesPage extends StatelessWidget {
 
           debugPrint("Looking for classes for student ID: $studentId");
 
-          // Try both UID and document ID for backward compatibility
+          // Use the Firebase Auth UID consistently for enrollments
           return FutureBuilder<QuerySnapshot>(
             future:
                 FirebaseFirestore.instance
                     .collection('class_enrollments')
-                    .where('studentId', whereIn: [studentId, currentUser.uid])
+                    .where('studentId', isEqualTo: studentId)
                     .get(),
             builder: (context, enrollmentSnapshot) {
               if (enrollmentSnapshot.connectionState ==

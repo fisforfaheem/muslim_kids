@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:muslim_kids/home_page.dart';
 import 'package:muslim_kids/services/prayer_alarm_service.dart';
+import 'package:muslim_kids/services/boot_notification_handler.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'firebase_notification_service.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -39,7 +40,8 @@ Future<void> _requestPermissions() async {
   debugPrint("Battery optimization permission status: $batteryStatus");
   if (batteryStatus != PermissionStatus.granted) {
     debugPrint(
-        "⚠️ Battery optimization permission not granted: $batteryStatus");
+      "⚠️ Battery optimization permission not granted: $batteryStatus",
+    );
   }
 }
 
@@ -71,22 +73,19 @@ void main() async {
   await FirebaseNotificationService().init();
   await LocalNotificationService.initialize();
 
-  // Test notification to verify permissions
+  // Initialize boot notification handler for rescheduling after device restart
   try {
-    await LocalNotificationService.showNotification(
-      id: 999,
-      title: 'Muslim Kids App',
-      body: 'Welcome! Notifications are now set up correctly.',
-    );
+    await BootNotificationHandler.initialize();
+    debugPrint("✅ Boot notification handler initialized successfully");
   } catch (e) {
-    debugPrint("⚠️ Error showing test notification: $e");
+    debugPrint("⚠️ Error initializing boot notification handler: $e");
+    // Continue anyway, as this is not critical for app startup
   }
 
-  // Initialize prayer alarm service
-  if (FirebaseAuth.instance.currentUser != null) {
-    final prayerAlarmService = PrayerAlarmService();
-    await prayerAlarmService.scheduleAllPrayerTimeNotifications();
-  }
+  // Initialize prayer alarm service - always schedule notifications
+  // even if user is not logged in (will use default prayer times)
+  final prayerAlarmService = PrayerAlarmService();
+  await prayerAlarmService.scheduleAllPrayerTimeNotifications();
 
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -99,10 +98,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: AuthWrapper(),
-    );
+    return MaterialApp(debugShowCheckedModeBanner: false, home: AuthWrapper());
   }
 }
 
@@ -119,10 +115,11 @@ class AuthWrapper extends StatelessWidget {
           if (user != null) {
             // User is signed in, check Firestore for user type
             return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .get(),
+              future:
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .get(),
               builder: (context, userSnapshot) {
                 if (userSnapshot.connectionState == ConnectionState.done) {
                   if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -137,10 +134,11 @@ class AuthWrapper extends StatelessWidget {
                     String name = userData['name'] ?? '';
                     String avatar = userData['avatar'] ?? 'assets/avatar2.jpg';
                     return HomePage(
-                        userType: userType,
-                        email: email,
-                        name: name,
-                        avatar: avatar);
+                      userType: userType,
+                      email: email,
+                      name: name,
+                      avatar: avatar,
+                    );
                   }
                 }
                 // If we're waiting for Firestore or user data doesn't exist yet
@@ -157,11 +155,14 @@ class AuthWrapper extends StatelessWidget {
 
   // Ensure user data consistency between Auth UID and Firestore Document ID
   Future<void> _ensureUserDataConsistency(
-      User user, Map<String, dynamic> userData) async {
+    User user,
+    Map<String, dynamic> userData,
+  ) async {
     try {
-      // Check if we need to create a document with UID as document ID
-      final docRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      // Always use Firebase Auth UID as document ID
+      final docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
       final docSnapshot = await docRef.get();
 
       if (!docSnapshot.exists) {
@@ -169,9 +170,19 @@ class AuthWrapper extends StatelessWidget {
         await docRef.set({
           ...userData,
           'email': user.email ?? userData['email'] ?? '',
+          'uid': user.uid, // Store UID in the document for reference
           'lastUpdated': FieldValue.serverTimestamp(),
         });
         debugPrint("Created user document with UID: ${user.uid}");
+      } else {
+        // Update existing document to ensure it has the UID field
+        if (docSnapshot.data()?['uid'] != user.uid) {
+          await docRef.update({
+            'uid': user.uid,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+          debugPrint("Updated user document with UID: ${user.uid}");
+        }
       }
     } catch (e) {
       debugPrint("Error ensuring user data consistency: $e");

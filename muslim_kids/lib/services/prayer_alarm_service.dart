@@ -450,26 +450,52 @@ class PrayerAlarmService {
       return;
     }
 
-    try {
-      debugPrint('$TAG 🔄 Saving location-based prayer times to Firestore...');
-      // First, delete existing prayer times
-      final batch = _firestore.batch();
-      final snapshot = await _prayerTimesRef.get();
-      for (var doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
+    int retryCount = 0;
+    const maxRetries = 3;
+    bool success = false;
 
-      // Then, save the new prayer times
-      for (var prayerTime in prayerTimes) {
-        await _prayerTimesRef.doc(prayerTime.id).set(prayerTime.toMap());
-        await _schedulePrayerTimeNotification(prayerTime);
-      }
+    while (!success && retryCount < maxRetries) {
+      try {
+        debugPrint(
+          '$TAG 🔄 Saving location-based prayer times to Firestore...',
+        );
 
-      debugPrint('$TAG ✅ Saved location-based prayer times to Firestore');
-    } catch (e) {
-      debugPrint('$TAG ❌ Error saving prayer times to Firestore: $e');
-      // Schedule notifications even if Firestore fails
+        // First, delete existing prayer times
+        final batch = _firestore.batch();
+        final snapshot = await _prayerTimesRef.get();
+        for (var doc in snapshot.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+
+        // Then, save the new prayer times
+        for (var prayerTime in prayerTimes) {
+          await _prayerTimesRef.doc(prayerTime.id).set(prayerTime.toMap());
+          await _schedulePrayerTimeNotification(prayerTime);
+        }
+
+        debugPrint('$TAG ✅ Saved location-based prayer times to Firestore');
+        success = true;
+      } catch (e) {
+        retryCount++;
+        debugPrint(
+          '$TAG ❌ Error saving prayer times to Firestore (attempt $retryCount): $e',
+        );
+
+        if (retryCount < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          final waitTime = Duration(seconds: 1 * retryCount);
+          debugPrint('$TAG 🔄 Retrying in ${waitTime.inSeconds} seconds...');
+          await Future.delayed(waitTime);
+        }
+      }
+    }
+
+    // Schedule notifications even if Firestore fails
+    if (!success) {
+      debugPrint(
+        '$TAG ⚠️ Failed to save to Firestore after $maxRetries attempts. Scheduling local notifications only.',
+      );
       for (var prayerTime in prayerTimes) {
         await _schedulePrayerTimeNotification(prayerTime);
       }
@@ -649,44 +675,6 @@ class PrayerAlarmService {
     }
   }
 
-  // Create default prayer times for a new user
-  Future<void> _createDefaultPrayerTimes() async {
-    if (_userId == null) return;
-
-    final defaultTimes = [
-      PrayerTime(
-        id: 'fajr',
-        name: 'Fajr',
-        time: const TimeOfDay(hour: 5, minute: 0),
-      ),
-      PrayerTime(
-        id: 'dhuhr',
-        name: 'Dhuhr',
-        time: const TimeOfDay(hour: 12, minute: 30),
-      ),
-      PrayerTime(
-        id: 'asr',
-        name: 'Asr',
-        time: const TimeOfDay(hour: 15, minute: 30),
-      ),
-      PrayerTime(
-        id: 'maghrib',
-        name: 'Maghrib',
-        time: const TimeOfDay(hour: 18, minute: 0),
-      ),
-      PrayerTime(
-        id: 'isha',
-        name: 'Isha',
-        time: const TimeOfDay(hour: 20, minute: 0),
-      ),
-    ];
-
-    for (var prayerTime in defaultTimes) {
-      await _prayerTimesRef.doc(prayerTime.id).set(prayerTime.toMap());
-      await _schedulePrayerTimeNotification(prayerTime);
-    }
-  }
-
   // Get default prayer times when user is not logged in or has no data
   List<PrayerTime> _getDefaultPrayerTimes() {
     return [
@@ -737,76 +725,116 @@ class PrayerAlarmService {
       return;
     }
 
-    // Ensure we have notification permissions
-    try {
-      final hasPermission = await _checkNotificationPermissions();
-      if (!hasPermission) {
-        debugPrint(
-          '$TAG Cannot schedule notification: No notification permission',
-        );
-        return;
-      }
+    int retryCount = 0;
+    const maxRetries = 2;
+    bool success = false;
 
-      // Get the device's timezone
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-      final tz.Location location = tz.getLocation(timeZoneName);
-
-      // Ensure notifications can run in background
+    while (!success && retryCount < maxRetries) {
       try {
-        await _ensureBackgroundNotifications();
-      } catch (e) {
-        debugPrint('$TAG Warning - background notification setup failed: $e');
-        // Continue anyway
-      }
-
-      // Schedule for today
-      final now = DateTime.now();
-      final scheduledDate = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        prayerTime.time.hour,
-        prayerTime.time.minute,
-      );
-
-      // If the time has already passed today, schedule for tomorrow
-      DateTime finalDate = scheduledDate;
-      if (scheduledDate.isBefore(now)) {
-        finalDate = scheduledDate.add(const Duration(days: 1));
-      }
-
-      // Cancel any previous notification with the same ID
-      // This is to prevent duplicate notifications
-      final notificationId = _getNotificationId(prayerTime);
-
-      try {
-        // Schedule the notification
-        await LocalNotificationService.scheduleNotification(
-          id: notificationId,
-          title: "Time for ${prayerTime.name} Prayer",
-          body: "It's time to pray ${prayerTime.name}",
-          scheduledTime: finalDate,
-        );
-
-        debugPrint(
-          '$TAG Scheduled prayer notification for ${prayerTime.name} at ${finalDate.toString()}, ID: $notificationId',
-        );
-      } catch (e) {
-        debugPrint('$TAG Error during notification scheduling: $e');
-        // Try an immediate notification as fallback
-        try {
-          await LocalNotificationService.showNotification(
-            id: notificationId,
-            title: "Prayer Time Reminder",
-            body:
-                "Prayer time notifications have been set up for ${prayerTime.name}",
+        // Ensure we have notification permissions
+        final hasPermission = await _checkNotificationPermissions();
+        if (!hasPermission) {
+          debugPrint(
+            '$TAG Cannot schedule notification: No notification permission',
           );
-        } catch (innerE) {
-          debugPrint('$TAG Failed to show fallback notification: $innerE');
+          return;
+        }
+
+        // Get the device's timezone and set it for notifications
+        final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+        // Set the timezone for the notification
+        tz.setLocalLocation(tz.getLocation(timeZoneName));
+
+        // Ensure notifications can run in background
+        try {
+          await _ensureBackgroundNotifications();
+        } catch (e) {
+          debugPrint('$TAG Warning - background notification setup failed: $e');
+          // Continue anyway
+        }
+
+        // Schedule for today
+        final now = DateTime.now();
+        final scheduledDate = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          prayerTime.time.hour,
+          prayerTime.time.minute,
+        );
+
+        // If the time has already passed today, schedule for tomorrow
+        DateTime finalDate = scheduledDate;
+        if (scheduledDate.isBefore(now)) {
+          finalDate = scheduledDate.add(const Duration(days: 1));
+        }
+
+        // Cancel any previous notification with the same ID
+        // This is to prevent duplicate notifications
+        final notificationId = _getNotificationId(prayerTime);
+
+        try {
+          // Schedule the notification
+          await LocalNotificationService.scheduleNotification(
+            id: notificationId,
+            title: "Time for ${prayerTime.name} Prayer",
+            body: "It's time to pray ${prayerTime.name}",
+            scheduledTime: finalDate,
+          );
+
+          debugPrint(
+            '$TAG Scheduled prayer notification for ${prayerTime.name} at ${finalDate.toString()}, ID: $notificationId',
+          );
+          success = true;
+        } catch (e) {
+          retryCount++;
+          debugPrint(
+            '$TAG Error during notification scheduling (attempt $retryCount): $e',
+          );
+
+          if (retryCount < maxRetries) {
+            // Wait before retrying
+            final waitTime = Duration(milliseconds: 500 * retryCount);
+            debugPrint(
+              '$TAG Retrying notification scheduling in ${waitTime.inMilliseconds}ms...',
+            );
+            await Future.delayed(waitTime);
+          } else {
+            // Try an immediate notification as fallback on final attempt
+            try {
+              await LocalNotificationService.showNotification(
+                id: notificationId,
+                title: "Prayer Time Reminder",
+                body:
+                    "Prayer time notifications have been set up for ${prayerTime.name}",
+              );
+              debugPrint(
+                '$TAG Sent fallback immediate notification for ${prayerTime.name}',
+              );
+              success =
+                  true; // Consider this a success since we showed a fallback
+            } catch (innerE) {
+              debugPrint('$TAG Failed to show fallback notification: $innerE');
+            }
+          }
+        }
+      } catch (e) {
+        retryCount++;
+        debugPrint(
+          '$TAG Fatal error scheduling prayer notification (attempt $retryCount): $e',
+        );
+
+        if (retryCount < maxRetries) {
+          // Wait before retrying
+          await Future.delayed(Duration(seconds: 1));
         }
       }
-    } catch (e) {
-      debugPrint('$TAG Fatal error scheduling prayer notification: $e');
+    }
+
+    if (!success) {
+      debugPrint(
+        '$TAG ❌ Failed to schedule notification for ${prayerTime.name} after $maxRetries attempts',
+      );
     }
   }
 

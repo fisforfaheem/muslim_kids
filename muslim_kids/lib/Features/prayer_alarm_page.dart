@@ -711,15 +711,49 @@ class _PrayerAlarmPageState extends State<PrayerAlarmPage> {
           FloatingActionButton(
             heroTag: 'notification_btn',
             backgroundColor: Colors.blue,
-            onPressed: () {
-              // Reschedule all notifications
-              _alarmService.scheduleAllPrayerTimeNotifications();
-              ScaffoldMessenger.of(context).showSnackBar(
+            onPressed: () async {
+              // Capture the context before the async gap
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+              // Show loading indicator
+              scaffoldMessenger.showSnackBar(
                 const SnackBar(
-                  content: Text('Prayer alarms updated'),
-                  backgroundColor: Colors.green,
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Text('Updating prayer alarms...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 1),
+                  backgroundColor: Colors.blue,
                 ),
               );
+
+              // Reschedule all notifications
+              await _alarmService.scheduleAllPrayerTimeNotifications();
+
+              if (mounted) {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 16),
+                        Text('Prayer alarms updated successfully'),
+                      ],
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             },
             tooltip: 'Reschedule all notifications',
             child: const Icon(Icons.notifications_active, color: Colors.white),
@@ -800,7 +834,7 @@ class _PrayerAlarmPageState extends State<PrayerAlarmPage> {
         side:
             isNext ? BorderSide(color: Colors.blue, width: 2) : BorderSide.none,
       ),
-      color: backgroundColor.withOpacity(isNext ? 1.0 : 0.7),
+      color: isNext ? backgroundColor : backgroundColor.withAlpha(180),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
@@ -809,7 +843,7 @@ class _PrayerAlarmPageState extends State<PrayerAlarmPage> {
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withAlpha(77),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: Colors.white),
@@ -855,7 +889,9 @@ class _PrayerAlarmPageState extends State<PrayerAlarmPage> {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    "It's time to pray ${prayer.name}",
+                    isPast
+                        ? "Time for ${prayer.name} Prayer has passed"
+                        : "It's time to pray ${prayer.name}",
                     style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   SizedBox(height: 4),
@@ -889,7 +925,7 @@ class _PrayerAlarmPageState extends State<PrayerAlarmPage> {
               value: prayer.isEnabled,
               onChanged: (value) => _togglePrayerTime(prayer, value),
               activeColor: Colors.blue,
-              activeTrackColor: Colors.blue.withOpacity(0.5),
+              activeTrackColor: Colors.blue.withAlpha(128),
             ),
           ],
         ),

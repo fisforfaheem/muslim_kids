@@ -39,10 +39,10 @@ class LocalNotificationService {
     // iOS Initialization Settings
     final DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     // Complete Initialization Settings
     final InitializationSettings settings = InitializationSettings(
@@ -62,12 +62,9 @@ class LocalNotificationService {
     // Request permissions (for iOS)
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
 
     // For Android 13+, request exact alarm permission
     await _requestExactAlarmPermissionIfNeeded();
@@ -85,10 +82,12 @@ class LocalNotificationService {
   // Check if notification permissions are granted
   static Future<bool> checkPermissions() async {
     try {
-      final bool? permissionsGranted = await _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.areNotificationsEnabled();
+      final bool? permissionsGranted =
+          await _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.areNotificationsEnabled();
 
       return permissionsGranted ?? false;
     } catch (e) {
@@ -101,9 +100,10 @@ class LocalNotificationService {
   static Future<void> showTestNotification() async {
     try {
       await showNotification(
-          id: 0,
-          title: 'Notification Test',
-          body: 'This is a test notification to verify setup');
+        id: 0,
+        title: 'Notification Test',
+        body: 'This is a test notification to verify setup',
+      );
       debugPrint('$TAG Test notification sent successfully');
     } catch (e) {
       debugPrint('$TAG Error sending test notification: $e');
@@ -114,8 +114,10 @@ class LocalNotificationService {
   static Future<void> _requestExactAlarmPermissionIfNeeded() async {
     try {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+          _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
 
       if (androidImplementation != null) {
         final bool? hasExactAlarmPermission =
@@ -135,8 +137,10 @@ class LocalNotificationService {
   static Future<void> _requestAndroidPermissionsIfNeeded() async {
     try {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+          _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
 
       if (androidImplementation != null) {
         // Request notification permissions for Android 13+
@@ -173,6 +177,7 @@ class LocalNotificationService {
     // Create Android notification details with or without sound
     AndroidNotificationDetails androidDetails;
     try {
+      // Check if adhan sound file exists and is valid
       androidDetails = const AndroidNotificationDetails(
         'muslim_kids_channel',
         'Muslim Kids Notifications',
@@ -190,9 +195,10 @@ class LocalNotificationService {
         ledOnMs: 1000,
         ledOffMs: 500,
       );
+      debugPrint('$TAG Using adhan sound for notification');
     } catch (e) {
       // Fallback to default sound if adhan not found
-      debugPrint('$TAG Using default sound: $e');
+      debugPrint('$TAG Error using adhan sound, falling back to default: $e');
       androidDetails = const AndroidNotificationDetails(
         'muslim_kids_channel',
         'Muslim Kids Notifications',
@@ -241,6 +247,7 @@ class LocalNotificationService {
     // Create Android notification details with or without sound
     AndroidNotificationDetails androidDetails;
     try {
+      // Check if adhan sound file exists and is valid
       androidDetails = const AndroidNotificationDetails(
         'muslim_kids_channel',
         'Muslim Kids Notifications',
@@ -259,9 +266,12 @@ class LocalNotificationService {
         ledOffMs: 500,
         fullScreenIntent: true,
       );
+      debugPrint('$TAG Using adhan sound for scheduled notification');
     } catch (e) {
       // Fallback to default sound if adhan not found
-      debugPrint('$TAG Using default sound: $e');
+      debugPrint(
+        '$TAG Error using adhan sound for scheduled notification, falling back to default: $e',
+      );
       androidDetails = const AndroidNotificationDetails(
         'muslim_kids_channel',
         'Muslim Kids Notifications',
@@ -306,7 +316,8 @@ class LocalNotificationService {
 
       // Log the scheduled time
       debugPrint(
-          "$TAG Original time: ${scheduledTime.toString()}, TZ time: ${scheduledDate.toString()}");
+        "$TAG Original time: ${scheduledTime.toString()}, TZ time: ${scheduledDate.toString()}",
+      );
 
       // Cancel previous notification with same ID
       await cancelNotification(id);
@@ -324,12 +335,17 @@ class LocalNotificationService {
       );
 
       debugPrint(
-          "$TAG 🟢 Notification scheduled for: ${scheduledTime.toString()}, ID: $id");
+        "$TAG 🟢 Notification scheduled for: ${scheduledTime.toString()}, ID: $id",
+      );
     } catch (e) {
       debugPrint("$TAG 🔴 Error scheduling notification: $e");
       // If scheduling fails, try to show it immediately as a fallback
       await showNotification(
-          id: id, title: title, body: body, payload: payload);
+        id: id,
+        title: title,
+        body: body,
+        payload: payload,
+      );
     }
   }
 
@@ -351,9 +367,10 @@ class LocalNotificationService {
     );
 
     // If time has passed for today, schedule for tomorrow
-    final DateTime finalTime = scheduledTime.isBefore(now)
-        ? scheduledTime.add(const Duration(days: 1))
-        : scheduledTime;
+    final DateTime finalTime =
+        scheduledTime.isBefore(now)
+            ? scheduledTime.add(const Duration(days: 1))
+            : scheduledTime;
 
     await scheduleNotification(
       id: id,

@@ -32,14 +32,14 @@
         <meta-data
     android:name="com.google.firebase.messaging.default_notification_channel_id"
     android:value="default_channel"/>
-        
+
         <service
     android:name="com.google.firebase.messaging.FirebaseMessagingService"
     android:exported="false">
     <intent-filter>
         <action android:name="com.google.firebase.MESSAGING_EVENT"/>
     </intent-filter>
-</service>         
+</service>
 
          <receiver
     android:name="com.dexterous.flutterlocalnotifications.receivers.NotificationBroadcastReceiver"
@@ -56,7 +56,19 @@
 <receiver
     android:name="com.dexterous.flutterlocalnotifications.receivers.ActionBroadcastReceiver"
     android:exported="false"/>
-    
+
+<!-- Boot receiver to reschedule notifications after device restart -->
+<receiver
+    android:name=".BootReceiver"
+    android:enabled="true"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+    </intent-filter>
+</receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

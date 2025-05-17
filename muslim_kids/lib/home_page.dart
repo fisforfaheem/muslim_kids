@@ -27,12 +27,13 @@ class HomePage extends StatefulWidget {
   final String name;
   final String avatar;
 
-  const HomePage(
-      {super.key,
-      required this.userType,
-      required this.email,
-      this.name = '',
-      this.avatar = 'assets/avatar2.jpg'});
+  const HomePage({
+    super.key,
+    required this.userType,
+    required this.email,
+    this.name = '',
+    this.avatar = 'assets/avatar2.jpg',
+  });
 
   @override
   HomePageState createState() => HomePageState();
@@ -42,15 +43,16 @@ class HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: (widget.userType == 'Kid' &&
-              FirebaseAuth.instance.currentUser?.email == widget.email)
-          ? KidHomePage(
-              email: widget.email,
-              name: widget.name,
-              avatar: widget.avatar) // Show Kid's homepage if userType is 'Kid'
-          : TeacherHomePage(
-              email: widget
-                  .email), // Show Teacher's homepage if userType is 'Teacher'
+      body:
+          (widget.userType == 'Kid')
+              ? KidHomePage(
+                email: widget.email,
+                name: widget.name,
+                avatar: widget.avatar,
+              ) // Show Kid's homepage if userType is 'Kid'
+              : TeacherHomePage(
+                email: widget.email,
+              ), // Show Teacher's homepage if userType is 'Teacher'
     );
   }
 }
@@ -60,11 +62,12 @@ class KidHomePage extends StatefulWidget {
   final String name;
   final String avatar;
 
-  const KidHomePage(
-      {super.key,
-      required this.email,
-      this.name = '',
-      this.avatar = 'assets/avatar2.jpg'});
+  const KidHomePage({
+    super.key,
+    required this.email,
+    this.name = '',
+    this.avatar = 'assets/avatar2.jpg',
+  });
 
   @override
   KidHomePageState createState() => KidHomePageState();
@@ -88,10 +91,12 @@ class KidHomePageState extends State<KidHomePage> {
     super.initState();
     _pages = [
       KidHomePageContent(
-          initialName: widget.name, initialAvatar: widget.avatar),
-      const ProgressPage(),
-      const SettingsPage(),
-      const NotificationPage(),
+        initialName: widget.name,
+        initialAvatar: widget.avatar,
+      ),
+      const ProgressPage(fromBottomNav: true),
+      const SettingsPage(fromBottomNav: true),
+      const NotificationPage(fromBottomNav: true),
     ];
 
     // Start animation timer
@@ -122,138 +127,147 @@ class KidHomePageState extends State<KidHomePage> {
           true, // Allow the body to extend behind the bottom navigation bar
       body: _pages[_selectedIndex], // Switch pages based on the selected index
       bottomNavigationBar: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          // Magical particles in the background
-          CustomPaint(
-            size: Size(MediaQuery.of(context).size.width, 70),
-            painter: _ParticlesPainter(_particles),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 0),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.purple.shade300,
-                  Colors.pink.shade200,
-                  Colors.purple.shade100
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            alignment: Alignment.bottomCenter,
+            children: [
+              // Magical particles in the background
+              CustomPaint(
+                size: Size(MediaQuery.of(context).size.width, 70),
+                painter: _ParticlesPainter(_particles),
               ),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.pink.shade200.withOpacity(0.5),
-                  spreadRadius: 2,
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 0),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.purple.shade300,
+                      Colors.pink.shade200,
+                      Colors.purple.shade100,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.pink.shade200.withOpacity(0.5),
+                      spreadRadius: 2,
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              backgroundColor: Colors.transparent,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white70,
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
-              selectedLabelStyle: GoogleFonts.nunito(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-              unselectedLabelStyle: GoogleFonts.nunito(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              selectedIconTheme: const IconThemeData(
-                size: 26,
-                grade: 200,
-              ),
-              unselectedIconTheme: const IconThemeData(
-                size: 22,
-                grade: 0,
-              ),
-              items: [
-                BottomNavigationBarItem(
-                  icon: Container(
-                    decoration: _selectedIndex == 0
-                        ? BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(15),
+                child: BottomNavigationBar(
+                  currentIndex: _selectedIndex,
+                  onTap: _onItemTapped,
+                  backgroundColor: Colors.transparent,
+                  selectedItemColor: Colors.white,
+                  unselectedItemColor: Colors.white70,
+                  elevation: 0,
+                  type: BottomNavigationBarType.fixed,
+                  selectedLabelStyle: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  unselectedLabelStyle: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  selectedIconTheme: const IconThemeData(size: 26, grade: 200),
+                  unselectedIconTheme: const IconThemeData(size: 22, grade: 0),
+                  items: [
+                    BottomNavigationBarItem(
+                      icon: Container(
+                            decoration:
+                                _selectedIndex == 0
+                                    ? BoxDecoration(
+                                      color: Colors.white24,
+                                      borderRadius: BorderRadius.circular(15),
+                                    )
+                                    : null,
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.home_rounded),
                           )
-                        : null,
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.home_rounded),
-                  ).animate(target: _selectedIndex == 0 ? 1 : 0).scale(
-                        begin: const Offset(1.0, 1.0),
-                        end: const Offset(1.1, 1.1),
-                        curve: Curves.easeInOut,
-                        duration: const Duration(milliseconds: 300),
-                      ),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Container(
-                    decoration: _selectedIndex == 1
-                        ? BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(15),
+                          .animate(target: _selectedIndex == 0 ? 1 : 0)
+                          .scale(
+                            begin: const Offset(1.0, 1.0),
+                            end: const Offset(1.1, 1.1),
+                            curve: Curves.easeInOut,
+                            duration: const Duration(milliseconds: 300),
+                          ),
+                      label: 'Home',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Container(
+                            decoration:
+                                _selectedIndex == 1
+                                    ? BoxDecoration(
+                                      color: Colors.white24,
+                                      borderRadius: BorderRadius.circular(15),
+                                    )
+                                    : null,
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.show_chart_rounded),
                           )
-                        : null,
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.show_chart_rounded),
-                  ).animate(target: _selectedIndex == 1 ? 1 : 0).scale(
-                        begin: const Offset(1.0, 1.0),
-                        end: const Offset(1.1, 1.1),
-                        curve: Curves.easeInOut,
-                        duration: const Duration(milliseconds: 300),
-                      ),
-                  label: 'Progress',
-                ),
-                BottomNavigationBarItem(
-                  icon: Container(
-                    decoration: _selectedIndex == 2
-                        ? BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(15),
+                          .animate(target: _selectedIndex == 1 ? 1 : 0)
+                          .scale(
+                            begin: const Offset(1.0, 1.0),
+                            end: const Offset(1.1, 1.1),
+                            curve: Curves.easeInOut,
+                            duration: const Duration(milliseconds: 300),
+                          ),
+                      label: 'Progress',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Container(
+                            decoration:
+                                _selectedIndex == 2
+                                    ? BoxDecoration(
+                                      color: Colors.white24,
+                                      borderRadius: BorderRadius.circular(15),
+                                    )
+                                    : null,
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.settings_rounded),
                           )
-                        : null,
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.settings_rounded),
-                  ).animate(target: _selectedIndex == 2 ? 1 : 0).scale(
-                        begin: const Offset(1.0, 1.0),
-                        end: const Offset(1.1, 1.1),
-                        curve: Curves.easeInOut,
-                        duration: const Duration(milliseconds: 300),
-                      ),
-                  label: 'Settings',
-                ),
-                BottomNavigationBarItem(
-                  icon: Container(
-                    decoration: _selectedIndex == 3
-                        ? BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(15),
+                          .animate(target: _selectedIndex == 2 ? 1 : 0)
+                          .scale(
+                            begin: const Offset(1.0, 1.0),
+                            end: const Offset(1.1, 1.1),
+                            curve: Curves.easeInOut,
+                            duration: const Duration(milliseconds: 300),
+                          ),
+                      label: 'Settings',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Container(
+                            decoration:
+                                _selectedIndex == 3
+                                    ? BoxDecoration(
+                                      color: Colors.white24,
+                                      borderRadius: BorderRadius.circular(15),
+                                    )
+                                    : null,
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.notifications_rounded),
                           )
-                        : null,
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.notifications_rounded),
-                  ).animate(target: _selectedIndex == 3 ? 1 : 0).scale(
-                        begin: const Offset(1.0, 1.0),
-                        end: const Offset(1.1, 1.1),
-                        curve: Curves.easeInOut,
-                        duration: const Duration(milliseconds: 300),
-                      ),
-                  label: 'Notifications',
+                          .animate(target: _selectedIndex == 3 ? 1 : 0)
+                          .scale(
+                            begin: const Offset(1.0, 1.0),
+                            end: const Offset(1.1, 1.1),
+                            curve: Curves.easeInOut,
+                            duration: const Duration(milliseconds: 300),
+                          ),
+                      label: 'Notifications',
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
-      ).animate().fadeIn(duration: const Duration(milliseconds: 500)).slideY(
+              ),
+            ],
+          )
+          .animate()
+          .fadeIn(duration: const Duration(milliseconds: 500))
+          .slideY(
             begin: 0.2,
             end: 0,
             duration: const Duration(milliseconds: 500),
@@ -267,11 +281,7 @@ class KidHomePageContent extends StatefulWidget {
   final String? initialName;
   final String? initialAvatar;
 
-  const KidHomePageContent({
-    super.key,
-    this.initialName,
-    this.initialAvatar,
-  });
+  const KidHomePageContent({super.key, this.initialName, this.initialAvatar});
 
   @override
   State<KidHomePageContent> createState() => _KidHomePageContentState();
@@ -330,10 +340,11 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
     try {
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .get();
+        DocumentSnapshot userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .get();
 
         if (userDoc.exists) {
           Map<String, dynamic> userData =
@@ -346,7 +357,7 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
         }
       }
     } catch (e) {
-      print('Error loading user data: $e');
+      debugPrint('Error loading user data: $e');
       setState(() {
         isLoading = false;
       });
@@ -364,37 +375,37 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
       'title': 'Prayer Alarm',
       'image': 'assets/prayer_time.jpg',
       'color': Colors.deepOrangeAccent,
-      'page': PrayerAlarmPage()
+      'page': PrayerAlarmPage(),
     },
     {
       'title': 'Quizzes',
       'image': 'assets/quizzes.jpg',
       'color': Colors.orange,
-      'page': QuizzesPage()
+      'page': QuizzesPage(),
     },
     {
       'title': 'Videos',
       'image': 'assets/videos.jpg',
       'color': Colors.deepPurpleAccent,
-      'page': VideosPage()
+      'page': VideosPage(),
     },
     {
       'title': 'Live Classes',
       'image': 'assets/live_classes.jpg',
       'color': Colors.blue,
-      'page': LiveClassesPage()
+      'page': LiveClassesPage(),
     },
     {
       'title': 'Islamic Calendar',
       'image': 'assets/islamic_calendar.jpg',
       'color': Colors.green,
-      'page': IslamicCalendarPage()
+      'page': IslamicCalendarPage(),
     },
     {
       'title': 'Prayer Tracker',
       'image': 'assets/prayer_tracker.jpg',
       'color': Colors.pink,
-      'page': PrayerTrackerPage()
+      'page': PrayerTrackerPage(),
     },
   ];
 
@@ -424,16 +435,17 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
                     enlargeCenterPage: true,
                     aspectRatio: 16 / 9,
                   ),
-                  items: carouselImages.map((image) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(10.0),
-                      child: Image.asset(
-                        image,
-                        fit: BoxFit.contain,
-                        width: double.infinity,
-                      ),
-                    );
-                  }).toList(),
+                  items:
+                      carouselImages.map((image) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(10.0),
+                          child: Image.asset(
+                            image,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
               const SizedBox(height: 15),
@@ -452,7 +464,8 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => tiles[index]['page']),
+                            builder: (context) => tiles[index]['page'],
+                          ),
                         );
                       },
                       child: Container(
@@ -522,8 +535,9 @@ class _MagicalParticle {
       Colors.pink.shade200,
     ];
 
-    color = colors[Random().nextInt(colors.length)]
-        .withOpacity(Random().nextDouble() * 0.7 + 0.3);
+    color = colors[Random().nextInt(colors.length)].withOpacity(
+      Random().nextDouble() * 0.7 + 0.3,
+    );
 
     speed = Random().nextDouble() * 1 + 0.5;
   }
@@ -551,9 +565,10 @@ class _ParticlesPainter extends CustomPainter {
     for (var particle in particles) {
       particle.update();
 
-      final paint = Paint()
-        ..color = particle.color
-        ..style = PaintingStyle.fill;
+      final paint =
+          Paint()
+            ..color = particle.color
+            ..style = PaintingStyle.fill;
 
       canvas.drawCircle(
         Offset(particle.x % size.width, particle.y),

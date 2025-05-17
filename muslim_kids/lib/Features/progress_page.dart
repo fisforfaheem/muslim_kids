@@ -5,7 +5,9 @@ import 'package:muslim_kids/Features/quizzes_page.dart';
 import 'package:intl/intl.dart';
 
 class ProgressPage extends StatefulWidget {
-  const ProgressPage({super.key});
+  final bool fromBottomNav;
+
+  const ProgressPage({super.key, this.fromBottomNav = false});
 
   @override
   State<ProgressPage> createState() => _ProgressPageState();
@@ -67,13 +69,14 @@ class _ProgressPageState extends State<ProgressPage>
           'date': completedAt,
           'score': scorePercentage,
           'points': earnedPoints,
-          'type': 'quiz_completed'
+          'type': 'quiz_completed',
         });
       }
 
       // Sort activity by date (newest first)
       activity.sort(
-          (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
+        (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+      );
 
       setState(() {
         _quizResults = history;
@@ -110,6 +113,15 @@ class _ProgressPageState extends State<ProgressPage>
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
+            automaticallyImplyLeading: false, // Disable automatic back button
+            // Only show back button if not from bottom nav
+            leading:
+                widget.fromBottomNav
+                    ? null
+                    : IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 30),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
             title: Text(
               'My Progress',
               style: GoogleFonts.kanit(
@@ -123,23 +135,18 @@ class _ProgressPageState extends State<ProgressPage>
               indicatorColor: Colors.white,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
-              tabs: const [
-                Tab(text: 'OVERVIEW'),
-                Tab(text: 'ACHIEVEMENTS'),
-              ],
+              tabs: const [Tab(text: 'OVERVIEW'), Tab(text: 'ACHIEVEMENTS')],
             ),
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(),
-                _buildAchievementsTab(),
-              ],
-            ),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                controller: _tabController,
+                children: [_buildOverviewTab(), _buildAchievementsTab()],
+              ),
     );
   }
 
@@ -272,13 +279,16 @@ class _ProgressPageState extends State<ProgressPage>
             const SizedBox(height: 12),
 
             _recentActivity.isEmpty
-                ? _buildEmptyState('No activity yet',
-                    'Start taking quizzes to see your progress here.')
+                ? _buildEmptyState(
+                  'No activity yet',
+                  'Start taking quizzes to see your progress here.',
+                )
                 : Column(
-                    children: _recentActivity
-                        .map((activity) => _buildActivityItem(activity))
-                        .toList(),
-                  ),
+                  children:
+                      _recentActivity
+                          .map((activity) => _buildActivityItem(activity))
+                          .toList(),
+                ),
 
             const SizedBox(height: 24),
 
@@ -290,7 +300,8 @@ class _ProgressPageState extends State<ProgressPage>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const QuizzesPage()),
+                      builder: (context) => const QuizzesPage(),
+                    ),
                   ).then((_) => _loadUserProgress());
                 },
                 style: ElevatedButton.styleFrom(
@@ -303,10 +314,7 @@ class _ProgressPageState extends State<ProgressPage>
                 ),
                 child: const Text(
                   'Take More Quizzes',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -345,8 +353,9 @@ class _ProgressPageState extends State<ProgressPage>
         'description': 'Get 100% on any quiz',
         'icon': Icons.star,
         'color': Colors.amber,
-        'unlocked': _quizResults
-            .any((result) => result['score'] == result['totalQuestions']),
+        'unlocked': _quizResults.any(
+          (result) => result['score'] == result['totalQuestions'],
+        ),
       },
       {
         'title': 'Knowledge Seeker',
@@ -374,9 +383,12 @@ class _ProgressPageState extends State<ProgressPage>
         'description': 'Complete at least 5 quizzes with 80% or higher score',
         'icon': Icons.timeline,
         'color': Colors.teal,
-        'unlocked': _quizResults
-                .where((r) =>
-                    (r['score'] as int) / (r['totalQuestions'] as int) >= 0.8)
+        'unlocked':
+            _quizResults
+                .where(
+                  (r) =>
+                      (r['score'] as int) / (r['totalQuestions'] as int) >= 0.8,
+                )
                 .length >=
             5,
       },
@@ -450,8 +462,9 @@ class _ProgressPageState extends State<ProgressPage>
                   LinearProgressIndicator(
                     value: unlockedAchievements.length / achievements.length,
                     backgroundColor: Colors.white30,
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
                     minHeight: 10,
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -482,7 +495,8 @@ class _ProgressPageState extends State<ProgressPage>
               ),
               const SizedBox(height: 12),
               ...unlockedAchievements.map(
-                  (achievement) => _buildAchievementItem(achievement, true)),
+                (achievement) => _buildAchievementItem(achievement, true),
+              ),
               const SizedBox(height: 24),
             ],
 
@@ -498,7 +512,8 @@ class _ProgressPageState extends State<ProgressPage>
               ),
               const SizedBox(height: 12),
               ...lockedAchievements.map(
-                  (achievement) => _buildAchievementItem(achievement, false)),
+                (achievement) => _buildAchievementItem(achievement, false),
+              ),
             ],
           ],
         ),
@@ -507,7 +522,11 @@ class _ProgressPageState extends State<ProgressPage>
   }
 
   Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -546,10 +565,7 @@ class _ProgressPageState extends State<ProgressPage>
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -606,20 +622,14 @@ class _ProgressPageState extends State<ProgressPage>
                 ),
                 Text(
                   'Score: ${scoreFormat.format(scorePercentage)} · +${activity['points']} points',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
               ],
             ),
           ),
           Text(
             dateFormat.format(activity['date']),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -627,7 +637,9 @@ class _ProgressPageState extends State<ProgressPage>
   }
 
   Widget _buildAchievementItem(
-      Map<String, dynamic> achievement, bool unlocked) {
+    Map<String, dynamic> achievement,
+    bool unlocked,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -635,9 +647,10 @@ class _ProgressPageState extends State<ProgressPage>
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: unlocked
-              ? (achievement['color'] as Color).withOpacity(0.5)
-              : Colors.grey.withOpacity(0.3),
+          color:
+              unlocked
+                  ? (achievement['color'] as Color).withOpacity(0.5)
+                  : Colors.grey.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -645,9 +658,10 @@ class _ProgressPageState extends State<ProgressPage>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: unlocked
-                  ? (achievement['color'] as Color).withOpacity(0.2)
-                  : Colors.grey.withOpacity(0.1),
+              color:
+                  unlocked
+                      ? (achievement['color'] as Color).withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -705,11 +719,7 @@ class _ProgressPageState extends State<ProgressPage>
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.history,
-            size: 48,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.history, size: 48, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             title,
@@ -723,10 +733,7 @@ class _ProgressPageState extends State<ProgressPage>
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
         ],
       ),
