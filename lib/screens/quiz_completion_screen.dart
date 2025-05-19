@@ -87,10 +87,7 @@ class QuizCompletionScreen extends StatelessWidget {
             // Quiz title
             Text(
               quiz.title,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
 
@@ -105,7 +102,7 @@ class QuizCompletionScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
+                    color: Colors.grey.withAlpha(51), // 0.2 opacity
                     spreadRadius: 1,
                     blurRadius: 3,
                     offset: const Offset(0, 2),
@@ -163,12 +160,67 @@ class QuizCompletionScreen extends StatelessWidget {
             const SizedBox(height: 15),
 
             // Rewards earned
-            _buildStatCard(
-              'Points Earned',
-              '$earnedPoints points',
-              Icons.workspace_premium,
-              Colors.amber,
-              fullWidth: true,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withAlpha(77), // 0.3 opacity
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Reward Points Earned',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.workspace_premium,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '$earnedPoints',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'You earned ${(earnedPoints / quiz.rewardPoints * 100).toInt()}% of available points',
+                    style: const TextStyle(fontSize: 14, color: Colors.white),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Points are added to your total rewards!',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 30),
@@ -235,7 +287,8 @@ class QuizCompletionScreen extends StatelessWidget {
                   // Share functionality would go here
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Sharing feature coming soon!')),
+                      content: Text('Sharing feature coming soon!'),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.share),
@@ -257,8 +310,13 @@ class QuizCompletionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color,
-      {bool fullWidth = false}) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    bool fullWidth = false,
+  }) {
     return Container(
       width: fullWidth ? double.infinity : null,
       padding: const EdgeInsets.all(16),
@@ -267,7 +325,7 @@ class QuizCompletionScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withAlpha(51), // 0.2 opacity
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 2),
@@ -295,10 +353,7 @@ class QuizCompletionScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
       ),

@@ -37,6 +37,11 @@ class _ProgressPageState extends State<ProgressPage>
     super.dispose();
   }
 
+  // Additional state variables for improved progress tracking
+  int _uniqueQuizzes = 0;
+  double _bestScore = 0.0;
+  int _totalTimeSpent = 0;
+
   Future<void> _loadUserProgress() async {
     setState(() {
       _isLoading = true;
@@ -45,12 +50,17 @@ class _ProgressPageState extends State<ProgressPage>
     try {
       // Load user quiz statistics and history
       final statistics = await _quizService.getUserQuizStatistics();
-      final history = await _quizService.getUserQuizHistory();
 
-      // Extract data from statistics
+      // We don't need to fetch history separately anymore since statistics now includes all results
+      final history = statistics['recentResults'] as List<Map<String, dynamic>>;
+
+      // Extract data from statistics with improved accuracy
       final completedQuizzes = statistics['quizzesCompleted'] ?? 0;
+      final uniqueQuizzes = statistics['uniqueQuizzes'] ?? 0;
       final points = statistics['totalPoints'] ?? 0;
       final avgScore = statistics['averageScore'] ?? 0.0;
+      final bestScore = statistics['bestScore'] ?? 0.0;
+      final totalTimeSpent = statistics['totalTimeSpent'] ?? 0;
 
       // Convert history to activity feed
       List<Map<String, dynamic>> activity = [];
@@ -60,7 +70,10 @@ class _ProgressPageState extends State<ProgressPage>
         final totalQuestions = result['totalQuestions'] as int;
         final quizTitle = result['quizTitle'] as String;
         final completedAt = result['completedAt'] as DateTime;
-        final earnedPoints = (result['percentage'] as num? ?? 0) ~/ 10;
+        final earnedPoints =
+            result['earnedPoints'] as int? ??
+            (result['percentage'] as num? ?? 0) ~/ 10;
+        final timeSpent = result['timeSpentInSeconds'] as int? ?? 0;
 
         double scorePercentage = score / totalQuestions;
 
@@ -69,6 +82,7 @@ class _ProgressPageState extends State<ProgressPage>
           'date': completedAt,
           'score': scorePercentage,
           'points': earnedPoints,
+          'timeSpent': timeSpent,
           'type': 'quiz_completed',
         });
       }
@@ -82,10 +96,11 @@ class _ProgressPageState extends State<ProgressPage>
         _quizResults = history;
         _totalPoints = points;
         _completedQuizzes = completedQuizzes;
-        _averageScore =
-            avgScore > 0 ? avgScore / 100 : 0; // Convert to 0-1 scale if needed
-        _recentActivity =
-            activity.take(5).toList(); // Take only 5 most recent activities
+        _uniqueQuizzes = uniqueQuizzes;
+        _averageScore = avgScore / 100; // Convert to 0-1 scale
+        _bestScore = bestScore / 100; // Convert to 0-1 scale
+        _totalTimeSpent = totalTimeSpent;
+        _recentActivity = activity;
         _isLoading = false;
       });
     } catch (e) {
@@ -159,7 +174,7 @@ class _ProgressPageState extends State<ProgressPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Key stats cards
+            // Key stats cards - now with more detailed information
             Row(
               children: [
                 Expanded(
@@ -174,12 +189,48 @@ class _ProgressPageState extends State<ProgressPage>
                 Expanded(
                   child: _buildStatCard(
                     'Quizzes Completed',
-                    _completedQuizzes.toString(),
+                    '$_completedQuizzes',
                     Icons.school,
                     Colors.blue,
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Second row of stats
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Unique Quizzes',
+                    _uniqueQuizzes.toString(),
+                    Icons.category,
+                    Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Best Score',
+                    '${(_bestScore * 100).toInt()}%',
+                    Icons.star,
+                    Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Time spent card
+            _buildStatCard(
+              'Total Time Spent',
+              _formatTime(_totalTimeSpent),
+              Icons.timer,
+              Colors.purple,
+              fullWidth: true,
             ),
 
             const SizedBox(height: 16),
@@ -339,14 +390,14 @@ class _ProgressPageState extends State<ProgressPage>
         'description': 'Complete 5 different quizzes',
         'icon': Icons.explore,
         'color': Colors.green,
-        'unlocked': _completedQuizzes >= 5,
+        'unlocked': _uniqueQuizzes >= 5,
       },
       {
         'title': 'Quiz Master',
         'description': 'Complete 10 different quizzes',
         'icon': Icons.school,
         'color': Colors.purple,
-        'unlocked': _completedQuizzes >= 10,
+        'unlocked': _uniqueQuizzes >= 10,
       },
       {
         'title': 'Perfect Score',
@@ -354,7 +405,8 @@ class _ProgressPageState extends State<ProgressPage>
         'icon': Icons.star,
         'color': Colors.amber,
         'unlocked': _quizResults.any(
-          (result) => result['score'] == result['totalQuestions'],
+          (result) =>
+              (result['score'] as int) == (result['totalQuestions'] as int),
         ),
       },
       {
@@ -372,11 +424,13 @@ class _ProgressPageState extends State<ProgressPage>
         'unlocked': _totalPoints >= 100,
       },
       {
-        'title': 'Dedication',
-        'description': 'Complete quizzes from 3 different categories',
-        'icon': Icons.category,
-        'color': Colors.pink,
-        'unlocked': _quizResults.isNotEmpty && _quizResults.length >= 3,
+        'title': 'Speed Learner',
+        'description': 'Complete a quiz in under 60 seconds',
+        'icon': Icons.timer,
+        'color': Colors.red,
+        'unlocked': _quizResults.any(
+          (result) => (result['timeSpentInSeconds'] as int? ?? 999) < 60,
+        ),
       },
       {
         'title': 'Consistent Learner',
@@ -419,7 +473,7 @@ class _ProgressPageState extends State<ProgressPage>
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withAlpha(77), // 0.3 opacity
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, 3),
@@ -453,7 +507,7 @@ class _ProgressPageState extends State<ProgressPage>
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha(179), // 0.7 opacity
                         ),
                       ),
                     ],
@@ -473,7 +527,7 @@ class _ProgressPageState extends State<ProgressPage>
                     'Keep going to unlock all achievements!',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withAlpha(230), // 0.9 opacity
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -521,20 +575,37 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
+  // Format seconds into a readable time string (HH:MM:SS or MM:SS)
+  String _formatTime(int seconds) {
+    if (seconds < 60) {
+      return '$seconds sec';
+    } else if (seconds < 3600) {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return '$minutes min ${remainingSeconds > 0 ? '$remainingSeconds sec' : ''}';
+    } else {
+      final hours = seconds ~/ 3600;
+      final minutes = (seconds % 3600) ~/ 60;
+      return '$hours hr ${minutes > 0 ? '$minutes min' : ''}';
+    }
+  }
+
   Widget _buildStatCard(
     String title,
     String value,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    bool fullWidth = false,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
+      width: fullWidth ? double.infinity : null,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withAlpha(51), // 0.2 opacity
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -585,7 +656,7 @@ class _ProgressPageState extends State<ProgressPage>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(26), // 0.1 opacity
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -597,7 +668,9 @@ class _ProgressPageState extends State<ProgressPage>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _getScoreColor(scorePercentage).withOpacity(0.1),
+              color: _getScoreColor(
+                scorePercentage,
+              ).withAlpha(26), // 0.1 opacity
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -624,6 +697,12 @@ class _ProgressPageState extends State<ProgressPage>
                   'Score: ${scoreFormat.format(scorePercentage)} · +${activity['points']} points',
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
+                if (activity.containsKey('timeSpent') &&
+                    activity['timeSpent'] > 0)
+                  Text(
+                    'Time: ${_formatTime(activity['timeSpent'])}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
               ],
             ),
           ),
@@ -649,8 +728,10 @@ class _ProgressPageState extends State<ProgressPage>
         border: Border.all(
           color:
               unlocked
-                  ? (achievement['color'] as Color).withOpacity(0.5)
-                  : Colors.grey.withOpacity(0.3),
+                  ? (achievement['color'] as Color).withAlpha(
+                    128,
+                  ) // 0.5 opacity
+                  : Colors.grey.withAlpha(77), // 0.3 opacity
         ),
       ),
       child: Row(
@@ -660,8 +741,10 @@ class _ProgressPageState extends State<ProgressPage>
             decoration: BoxDecoration(
               color:
                   unlocked
-                      ? (achievement['color'] as Color).withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.1),
+                      ? (achievement['color'] as Color).withAlpha(
+                        51,
+                      ) // 0.2 opacity
+                      : Colors.grey.withAlpha(26), // 0.1 opacity
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -710,7 +793,7 @@ class _ProgressPageState extends State<ProgressPage>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(26), // 0.1 opacity
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),

@@ -959,9 +959,15 @@ class PrayerAlarmService {
   // Ensure the app can show notifications in the background
   Future<void> _ensureBackgroundNotifications() async {
     if (Platform.isAndroid) {
-      // For Android, we need to request battery optimization exemption
-      // and background notification permissions
-      await Permission.ignoreBatteryOptimizations.request();
+      try {
+        // For Android, we need to request battery optimization exemption
+        // and background notification permissions
+        final status = await Permission.ignoreBatteryOptimizations.request();
+        debugPrint('$TAG Battery optimization permission status: $status');
+      } catch (e) {
+        debugPrint('$TAG Error requesting battery optimization permission: $e');
+        // Continue anyway as this is not critical
+      }
     }
   }
 

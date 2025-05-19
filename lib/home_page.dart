@@ -10,6 +10,7 @@ import 'package:muslim_kids/Features/quizzes_page.dart';
 import 'package:muslim_kids/Features/settings_page.dart';
 import 'package:muslim_kids/Features/videos_page.dart';
 import 'package:muslim_kids/widgets/islamic_header.dart';
+import 'package:muslim_kids/quiz_debug_screen.dart';
 import 'teacher_home_page.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -231,43 +232,51 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
     'assets/slide3.jpg',
   ];
 
-  final List<Map<String, dynamic>> tiles = const [
+  List<Map<String, dynamic>> get tiles => [
     {
       'title': 'Prayer Alarm',
       'image': 'assets/prayer_time.jpg',
       'color': Colors.deepOrangeAccent,
-      'page': PrayerAlarmPage(),
+      'page': const PrayerAlarmPage(),
     },
     {
       'title': 'Quizzes',
       'image': 'assets/quizzes.jpg',
       'color': Colors.orange,
-      'page': QuizzesPage(),
+      'page': const QuizzesPage(),
     },
     {
       'title': 'Videos',
       'image': 'assets/videos.jpg',
       'color': Colors.deepPurpleAccent,
-      'page': VideosPage(),
+      'page': const VideosPage(),
     },
     {
       'title': 'Live Classes',
       'image': 'assets/live_classes.jpg',
       'color': Colors.blue,
-      'page': LiveClassesPage(),
+      'page': const LiveClassesPage(),
     },
     {
       'title': 'Islamic Calendar',
       'image': 'assets/islamic_calendar.jpg',
       'color': Colors.green,
-      'page': IslamicCalendarPage(),
+      'page': const IslamicCalendarPage(),
     },
     {
       'title': 'Prayer Tracker',
       'image': 'assets/prayer_tracker.jpg',
       'color': Colors.pink,
-      'page': PrayerTrackerPage(),
+      'page': const PrayerTrackerPage(),
     },
+    // Debug tile - only visible in development
+    if (FirebaseAuth.instance.currentUser?.email == "test@test.com")
+      {
+        'title': 'Quiz Debug',
+        'image': 'assets/quizzes.jpg',
+        'color': Colors.red,
+        'page': const QuizDebugScreen(),
+      },
   ];
 
   @override

@@ -9,10 +9,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 class QuizDetailScreen extends StatefulWidget {
   final String quizId;
 
-  const QuizDetailScreen({
-    super.key,
-    required this.quizId,
-  });
+  const QuizDetailScreen({super.key, required this.quizId});
 
   @override
   QuizDetailScreenState createState() => QuizDetailScreenState();
@@ -93,12 +90,70 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
       return;
     }
 
+    // Validate quiz data before starting
+    if (_quiz!.questions.isEmpty) {
+      _showErrorDialog('This quiz has no questions. Please try another quiz.');
+      return;
+    }
+
+    // Check if any question has invalid data
+    bool hasInvalidQuestions = false;
+    String errorMessage = '';
+
+    for (int i = 0; i < _quiz!.questions.length; i++) {
+      final question = _quiz!.questions[i];
+
+      // Check if question text is empty
+      if (question.question.trim().isEmpty) {
+        hasInvalidQuestions = true;
+        errorMessage = 'Question ${i + 1} has no text.';
+        break;
+      }
+
+      // Check if there are enough options
+      if (question.options.length < 2) {
+        hasInvalidQuestions = true;
+        errorMessage = 'Question ${i + 1} has fewer than 2 options.';
+        break;
+      }
+
+      // Check if correct option index is valid
+      if (question.correctOptionIndex < 0 ||
+          question.correctOptionIndex >= question.options.length) {
+        hasInvalidQuestions = true;
+        errorMessage = 'Question ${i + 1} has an invalid correct answer.';
+        break;
+      }
+    }
+
+    if (hasInvalidQuestions) {
+      _showErrorDialog(
+        'Quiz data error: $errorMessage Please try another quiz.',
+      );
+      return;
+    }
+
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => QuizSessionScreen(quiz: _quiz!),
-      ),
+      MaterialPageRoute(builder: (context) => QuizSessionScreen(quiz: _quiz!)),
     ).then((_) => _loadQuizData()); // Refresh when coming back
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Quiz Error'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -133,162 +188,168 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _quiz == null
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _quiz == null
               ? const Center(child: Text('Quiz not found'))
               : SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Quiz Image
-                      Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage(_quiz!.imageUrl),
-                            fit: BoxFit.cover,
-                          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Quiz Image
+                    Container(
+                      width: double.infinity,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage(_quiz!.imageUrl),
+                          fit: BoxFit.cover,
                         ),
                       ),
+                    ),
 
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title and difficulty
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _quiz!.title,
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        _getDifficultyColor(_quiz!.difficulty),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    _quiz!.difficulty,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            // Description
-                            Text(
-                              _quiz!.description,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[800],
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Quiz Info
-                            _buildInfoTile(
-                              'Questions',
-                              '${_quiz!.questions.length} questions to answer',
-                              Icons.question_answer,
-                            ),
-
-                            _buildInfoTile(
-                              'Category',
-                              _quiz!.category,
-                              Icons.category,
-                            ),
-
-                            _buildInfoTile(
-                              'Reward Points',
-                              '${_quiz!.rewardPoints} points to earn',
-                              Icons.star,
-                            ),
-
-                            _buildInfoTile(
-                              'Status',
-                              _hasCompletedQuiz
-                                  ? 'Completed'
-                                  : 'Not completed yet',
-                              _hasCompletedQuiz
-                                  ? Icons.check_circle
-                                  : Icons.pending,
-                              iconColor: _hasCompletedQuiz
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
-
-                            const SizedBox(height: 30),
-
-                            // Start Quiz Button
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _startQuiz,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.pink[200],
-                                  foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title and difficulty
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
                                 child: Text(
-                                  _hasCompletedQuiz
-                                      ? 'Retake Quiz'
-                                      : 'Start Quiz',
+                                  _quiz!.title,
                                   style: const TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                            ),
-
-                            if (_hasCompletedQuiz) ...[
-                              const SizedBox(height: 10),
-                              const Center(
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getDifficultyColor(_quiz!.difficulty),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                                 child: Text(
-                                  'You have already completed this quiz. Retaking it will not earn additional points.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontStyle: FontStyle.italic,
+                                  _quiz!.difficulty,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                             ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Description
+                          Text(
+                            _quiz!.description,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Quiz Info
+                          _buildInfoTile(
+                            'Questions',
+                            '${_quiz!.questions.length} questions to answer',
+                            Icons.question_answer,
+                          ),
+
+                          _buildInfoTile(
+                            'Category',
+                            _quiz!.category,
+                            Icons.category,
+                          ),
+
+                          _buildInfoTile(
+                            'Reward Points',
+                            '${_quiz!.rewardPoints} points to earn',
+                            Icons.star,
+                          ),
+
+                          _buildInfoTile(
+                            'Status',
+                            _hasCompletedQuiz
+                                ? 'Completed'
+                                : 'Not completed yet',
+                            _hasCompletedQuiz
+                                ? Icons.check_circle
+                                : Icons.pending,
+                            iconColor:
+                                _hasCompletedQuiz
+                                    ? Colors.green
+                                    : Colors.orange,
+                          ),
+
+                          const SizedBox(height: 30),
+
+                          // Start Quiz Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _startQuiz,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.pink[200],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                _hasCompletedQuiz
+                                    ? 'Retake Quiz'
+                                    : 'Start Quiz',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          if (_hasCompletedQuiz) ...[
+                            const SizedBox(height: 10),
+                            const Center(
+                              child: Text(
+                                'You have already completed this quiz. Retaking it will not earn additional points.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
                           ],
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
     );
   }
 
-  Widget _buildInfoTile(String title, String subtitle, IconData icon,
-      {Color? iconColor}) {
+  Widget _buildInfoTile(
+    String title,
+    String subtitle,
+    IconData icon, {
+    Color? iconColor,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
@@ -297,7 +358,7 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(26), // 0.1 opacity
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -309,14 +370,10 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (iconColor ?? Colors.blue).withOpacity(0.1),
+              color: (iconColor ?? Colors.blue).withAlpha(26), // 0.1 opacity
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: iconColor ?? Colors.blue,
-              size: 24,
-            ),
+            child: Icon(icon, color: iconColor ?? Colors.blue, size: 24),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -332,10 +389,7 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),

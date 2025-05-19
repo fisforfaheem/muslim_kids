@@ -13,36 +13,43 @@ import 'firebase_notification_service.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:muslim_kids/quiz_debug_screen.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("Handling a background message: ${message.messageId}");
 }
 
-Future<void> _requestPermissions() async {
-  var notificationStatus = await Permission.notification.request();
-  debugPrint("Notification permission status: $notificationStatus");
-
-  // Request notification permission and show dialog if denied
-  if (notificationStatus != PermissionStatus.granted) {
-    debugPrint("⚠️ Notification permission not granted: $notificationStatus");
+// Helper method to safely request a permission and handle errors
+Future<PermissionStatus> _safeRequestPermission(
+  Permission permission,
+  String permissionName,
+) async {
+  try {
+    final status = await permission.request();
+    debugPrint("$permissionName permission status: $status");
+    if (status != PermissionStatus.granted) {
+      debugPrint("⚠️ $permissionName permission not granted: $status");
+    }
+    return status;
+  } catch (e) {
+    debugPrint("⚠️ Error requesting $permissionName permission: $e");
+    return PermissionStatus.denied;
   }
+}
+
+Future<void> _requestPermissions() async {
+  // Request notification permission
+  await _safeRequestPermission(Permission.notification, "Notification");
 
   // Request exact alarm permission (for background alarms)
-  var alarmStatus = await Permission.scheduleExactAlarm.request();
-  debugPrint("Exact alarm permission status: $alarmStatus");
-  if (alarmStatus != PermissionStatus.granted) {
-    debugPrint("⚠️ Exact alarm permission not granted: $alarmStatus");
-  }
+  await _safeRequestPermission(Permission.scheduleExactAlarm, "Exact alarm");
 
   // Request ignore battery optimization permission
-  var batteryStatus = await Permission.ignoreBatteryOptimizations.request();
-  debugPrint("Battery optimization permission status: $batteryStatus");
-  if (batteryStatus != PermissionStatus.granted) {
-    debugPrint(
-      "⚠️ Battery optimization permission not granted: $batteryStatus",
-    );
-  }
+  await _safeRequestPermission(
+    Permission.ignoreBatteryOptimizations,
+    "Battery optimization",
+  );
 }
 
 Future<void> _setupTimezone() async {
@@ -69,6 +76,9 @@ void main() async {
   // Request permissions early
   await _requestPermissions();
 
+  // Set up background message handler first to avoid duplicate isolates
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   // Initialize notification services
   await FirebaseNotificationService().init();
   await LocalNotificationService.initialize();
@@ -87,9 +97,6 @@ void main() async {
   final prayerAlarmService = PrayerAlarmService();
   await prayerAlarmService.scheduleAllPrayerTimeNotifications();
 
-  // Set up background message handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
   runApp(const MyApp());
 }
 
@@ -98,7 +105,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, home: AuthWrapper());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: AuthWrapper(),
+      routes: {'/quiz_debug': (context) => const QuizDebugScreen()},
+    );
   }
 }
 
