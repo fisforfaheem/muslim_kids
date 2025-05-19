@@ -1,2 +1,0 @@
-C:/Users/TechMatched/Documents/GitHub/muslim_kids/muslim_kids/android/app/.cxx/RelWithDebInfo/2qs364t3/arm64-v8a/CMakeFiles/edit_cache.dir
-C:/Users/TechMatched/Documents/GitHub/muslim_kids/muslim_kids/android/app/.cxx/RelWithDebInfo/2qs364t3/arm64-v8a/CMakeFiles/rebuild_cache.dir
