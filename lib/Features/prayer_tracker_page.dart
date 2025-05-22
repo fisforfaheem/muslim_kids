@@ -599,19 +599,8 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
                             bgColor = Colors.indigo.shade50;
                           }
 
-                          // Get prayer time if available
-                          String prayerTimeText = '';
-                          if (prayerTimes.isNotEmpty &&
-                              index < prayerTimes.length) {
-                            final time = prayerTimes[index];
-                            final hour =
-                                time.hour > 12 ? time.hour - 12 : time.hour;
-                            final period = time.hour >= 12 ? 'PM' : 'AM';
-                            prayerTimeText =
-                                '${hour == 0 ? 12 : hour}:${time.minute.toString().padLeft(2, '0')} $period';
-                          }
-
-                          // Check if this prayer is currently active
+                          // We're no longer displaying prayer times as per manager's request
+                          // Instead, we'll just check if the prayer is currently active based on time of day
                           bool isActiveTime = false;
                           if (prayerTimes.isNotEmpty &&
                               index < prayerTimes.length) {
@@ -681,56 +670,26 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
                                       color: Colors.black54,
                                     ),
                                   ),
-                                  if (prayerTimeText.isNotEmpty)
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.access_time,
-                                          size: 12,
-                                          color:
-                                              isActiveTime
-                                                  ? Colors.green
-                                                  : Colors.grey,
+                                  // Prayer time display removed as per manager's request
+                                  if (isActiveTime)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'CURRENT PRAYER',
+                                        style: GoogleFonts.kanit(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          prayerTimeText,
-                                          style: GoogleFonts.kanit(
-                                            fontSize: 12,
-                                            color:
-                                                isActiveTime
-                                                    ? Colors.green
-                                                    : Colors.grey,
-                                            fontWeight:
-                                                isActiveTime
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                          ),
-                                        ),
-                                        if (isActiveTime)
-                                          Container(
-                                            margin: const EdgeInsets.only(
-                                              left: 4,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                              vertical: 1,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green,
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              'NOW',
-                                              style: GoogleFonts.kanit(
-                                                fontSize: 10,
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                      ),
                                     ),
                                 ],
                               ),

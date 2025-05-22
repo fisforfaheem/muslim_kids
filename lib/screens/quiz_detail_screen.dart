@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:muslim_kids/models/quiz_model.dart';
 import 'package:muslim_kids/services/quiz_service.dart';
@@ -36,6 +37,19 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
       final quizData = await _quizService.getQuizById(widget.quizId);
       final completedQuizIds = await _quizService.getCompletedQuizIds();
 
+      // List of available quiz images
+      final List<String> quizImages = [
+        'assets/11.jpg',
+        'assets/22.jpg',
+        'assets/33.jpg',
+        'assets/44.jpg',
+        'assets/55.jpg',
+        'assets/66.jpg',
+        'assets/77.jpg',
+        'assets/88.jpg',
+        'assets/99.jpg',
+      ];
+
       setState(() {
         // Convert Map data to QuizModel object if quiz data exists
         if (quizData != null) {
@@ -46,6 +60,19 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
             }
           }
 
+          // Use the imageUrl from Firestore if it exists and is not empty
+          // Otherwise, use a numbered image based on the quiz ID's hashcode
+          final String imageUrl;
+          if (quizData['imageUrl'] != null &&
+              quizData['imageUrl'].toString().isNotEmpty) {
+            imageUrl = quizData['imageUrl'];
+          } else {
+            // Use the quiz ID's hashcode to determine which image to use
+            final int hashCode = widget.quizId.hashCode.abs();
+            final int imageIndex = hashCode % quizImages.length;
+            imageUrl = quizImages[imageIndex];
+          }
+
           _quiz = QuizModel(
             id: quizData['id'] ?? '',
             title: quizData['title'] ?? '',
@@ -54,7 +81,7 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
             rewardPoints: quizData['rewardPoints'] ?? 10,
             questions: questions,
             category: quizData['category'] ?? 'General',
-            imageUrl: quizData['imageUrl'] ?? 'assets/quizzes.jpg',
+            imageUrl: imageUrl,
           );
         } else {
           _quiz = null;
@@ -64,7 +91,7 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading quiz data: $e');
+      debugPrint('Error loading quiz data: $e');
       setState(() {
         _isLoading = false;
       });

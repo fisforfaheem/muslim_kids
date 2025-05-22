@@ -6,6 +6,7 @@ import 'package:muslim_kids/screens/quiz_completion_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/rendering.dart';
 
 class QuizSessionScreen extends StatefulWidget {
   final QuizModel quiz;
@@ -27,6 +28,32 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
   // Time tracking variables
   int _quizTimeInSeconds = 0;
   Timer? _quizTimer;
+
+  // Define a color palette
+  final List<Color> _colorPalette = [
+    Colors.pink.shade300,
+    Colors.blue.shade300,
+    Colors.green.shade300,
+    Colors.orange.shade300,
+    Colors.purple.shade300,
+    Colors.teal.shade300,
+    Colors.red.shade300,
+  ];
+
+  Color get _currentThemeColor =>
+      _colorPalette[_currentQuestionIndex % _colorPalette.length];
+  Color get _currentLightBackgroundColor {
+    // Calculate a lighter shade of the current theme color
+    HSLColor hslColor = HSLColor.fromColor(_currentThemeColor);
+    // Increase lightness, ensure it doesn't go above 1.0 (white)
+    // Decrease saturation slightly to make it softer for a background
+    double newLightness = (hslColor.lightness + 0.3).clamp(0.0, 0.95);
+    double newSaturation = (hslColor.saturation - 0.1).clamp(0.0, 1.0);
+    return hslColor
+        .withLightness(newLightness)
+        .withSaturation(newSaturation)
+        .toColor();
+  }
 
   @override
   void initState() {
@@ -248,12 +275,12 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 244, 143),
+      backgroundColor: _currentLightBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.pink[200],
+            color: _currentThemeColor,
             borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
@@ -321,7 +348,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                         widget.quiz.questions.length,
                     backgroundColor: Colors.grey[300],
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.pink[200]!,
+                      _currentThemeColor,
                     ),
                     minHeight: 8,
                   ),
@@ -341,12 +368,10 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                               borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withAlpha(
-                                    51,
-                                  ), // 0.2 opacity
-                                  spreadRadius: 1,
+                                  color: Colors.grey.withOpacity(0.2),
+                                  spreadRadius: 2,
                                   blurRadius: 5,
-                                  offset: const Offset(0, 2),
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
@@ -358,15 +383,16 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.pink[300],
+                                    color: _currentThemeColor,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
                                   _currentQuestion.question,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: _currentThemeColor,
                                   ),
                                 ),
                               ],
@@ -389,12 +415,10 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.blue.withAlpha(26), // 0.1 opacity
+                                color: _currentThemeColor.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: Colors.blue.withAlpha(
-                                    77,
-                                  ), // 0.3 opacity
+                                  color: _currentThemeColor.withOpacity(0.3),
                                 ),
                               ),
                               child: Column(
@@ -404,13 +428,13 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                                     'Explanation:',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.blue[700],
+                                      color: _currentThemeColor,
                                     ),
                                   ),
                                   const SizedBox(height: 5),
                                   Text(
                                     _currentQuestion.explanation!,
-                                    style: TextStyle(color: Colors.blue[700]),
+                                    style: TextStyle(color: Colors.black87),
                                   ),
                                 ],
                               ),
@@ -428,7 +452,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                       color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withAlpha(77), // 0.3 opacity
+                          color: Colors.grey.withOpacity(0.2),
                           spreadRadius: 1,
                           blurRadius: 5,
                           offset: const Offset(0, -2),
@@ -442,7 +466,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                               child: ElevatedButton(
                                 onPressed: _moveToNextQuestion,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.pink[200],
+                                  backgroundColor: _currentThemeColor,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 15,
@@ -470,7 +494,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                                         ? _revealAnswer
                                         : null,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
+                                  backgroundColor: _currentThemeColor,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 15,
@@ -502,28 +526,26 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
     // Define colors based on selection and reveal state
     Color backgroundColor;
     Color borderColor;
-    Color textColor = Colors.black;
+    Color textColor = Colors.black87;
 
     if (_isAnswerRevealed) {
       if (isCorrect) {
-        backgroundColor = Colors.green.withAlpha(51); // 0.2 opacity
-        borderColor = Colors.green;
-        textColor = Colors.green[800]!;
+        backgroundColor = Colors.green.shade100;
+        borderColor = Colors.green.shade400;
+        textColor = Colors.green.shade800;
       } else if (isSelected) {
-        backgroundColor = Colors.red.withAlpha(51); // 0.2 opacity
-        borderColor = Colors.red;
-        textColor = Colors.red[800]!;
+        backgroundColor = Colors.red.shade100;
+        borderColor = Colors.red.shade400;
+        textColor = Colors.red.shade800;
       } else {
-        backgroundColor = Colors.white;
-        borderColor = Colors.grey.withAlpha(77); // 0.3 opacity
+        backgroundColor = Colors.grey.shade100;
+        borderColor = Colors.grey.shade300;
       }
     } else {
       backgroundColor =
-          isSelected ? Colors.blue.withAlpha(26) : Colors.white; // 0.1 opacity
+          isSelected ? _currentThemeColor.withOpacity(0.2) : Colors.white;
       borderColor =
-          isSelected
-              ? Colors.blue.withAlpha(77) // 0.3 opacity
-              : Colors.grey.withAlpha(77); // 0.3 opacity
+          isSelected ? _currentThemeColor : Colors.grey.withOpacity(0.5);
     }
 
     return GestureDetector(
@@ -544,15 +566,15 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
               decoration: BoxDecoration(
                 color:
                     isSelected
-                        ? Colors.blue
-                        : Colors.grey.withAlpha(51), // 0.2 opacity
+                        ? _currentThemeColor
+                        : Colors.grey.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Text(
                   String.fromCharCode(65 + index), // A, B, C, D, etc.
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black,
+                    color: isSelected ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -574,7 +596,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                 isCorrect
                     ? Icons.check_circle
                     : (isSelected ? Icons.cancel : null),
-                color: isCorrect ? Colors.green : Colors.red,
+                color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
               ),
             ],
           ],

@@ -18,7 +18,7 @@ class QuizModel {
     required this.rewardPoints,
     required this.questions,
     required this.category,
-    this.imageUrl = 'assets/quizzes.jpg',
+    this.imageUrl = '',
   });
 
   factory QuizModel.fromFirestore(DocumentSnapshot doc) {
@@ -39,7 +39,7 @@ class QuizModel {
       rewardPoints: data['rewardPoints'] ?? 10,
       questions: questions,
       category: data['category'] ?? 'General',
-      imageUrl: data['imageUrl'] ?? 'assets/quizzes.jpg',
+      imageUrl: data['imageUrl'] ?? '',
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:muslim_kids/Features/settings_page.dart';
 import 'package:muslim_kids/Features/videos_page.dart';
 import 'package:muslim_kids/widgets/islamic_header.dart';
 import 'package:muslim_kids/quiz_debug_screen.dart';
+import 'package:muslim_kids/add_multiple_quizzes.dart';
 import 'teacher_home_page.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -269,14 +270,8 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
       'color': Colors.pink,
       'page': const PrayerTrackerPage(),
     },
+
     // Debug tile - only visible in development
-    if (FirebaseAuth.instance.currentUser?.email == "test@test.com")
-      {
-        'title': 'Quiz Debug',
-        'image': 'assets/quizzes.jpg',
-        'color': Colors.red,
-        'page': const QuizDebugScreen(),
-      },
   ];
 
   @override

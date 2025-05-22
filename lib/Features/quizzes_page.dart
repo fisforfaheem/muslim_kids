@@ -5,6 +5,7 @@ import 'package:muslim_kids/services/quiz_service.dart';
 import 'package:muslim_kids/screens/quiz_detail_screen.dart';
 import 'package:muslim_kids/screens/quiz_results_screen.dart';
 import 'package:lottie/lottie.dart';
+import 'dart:math';
 
 class QuizzesPage extends StatefulWidget {
   const QuizzesPage({super.key});
@@ -45,37 +46,62 @@ class QuizzesPageState extends State<QuizzesPage>
       final completedQuizIds = await _quizService.getCompletedQuizIds();
       final userPoints = await _quizService.getUserPoints();
 
+      // List of available quiz images
+      final List<String> quizImages = [
+        'assets/11.jpg',
+        'assets/22.jpg',
+        'assets/33.jpg',
+        'assets/44.jpg',
+        'assets/55.jpg',
+        'assets/66.jpg',
+        'assets/77.jpg',
+        'assets/88.jpg',
+        'assets/99.jpg',
+      ];
+
+      final random = Random();
+
       setState(() {
         // Convert Map data to QuizModel objects
         _quizzes =
-            quizzes
-                .map(
-                  (quizData) => QuizModel(
-                    id: quizData['id'] ?? '',
-                    title: quizData['title'] ?? '',
-                    description: quizData['description'] ?? '',
-                    difficulty: quizData['difficulty'] ?? 'Easy',
-                    rewardPoints: quizData['rewardPoints'] ?? 10,
-                    questions:
-                        (quizData['questions'] as List<dynamic>? ?? [])
-                            .map(
-                              (q) => QuizQuestion(
-                                question: q['question'] ?? '',
-                                options:
-                                    (q['options'] as List<dynamic>? ?? [])
-                                        .map((o) => o.toString())
-                                        .toList(),
-                                correctOptionIndex:
-                                    q['correctOptionIndex'] ?? 0,
-                                explanation: q['explanation'],
-                              ),
-                            )
-                            .toList(),
-                    category: quizData['category'] ?? 'General',
-                    imageUrl: quizData['imageUrl'] ?? 'assets/quizzes.jpg',
-                  ),
-                )
-                .toList();
+            quizzes.asMap().entries.map((entry) {
+              final quizData = entry.value;
+
+              // Determine the image URL - Assign a random image from quizImages
+              String determinedImageUrl;
+
+              if (quizImages.isNotEmpty) {
+                determinedImageUrl =
+                    quizImages[random.nextInt(quizImages.length)];
+              } else {
+                // Ultimate fallback if quizImages is empty
+                determinedImageUrl = 'assets/child.jpg'; // Default image
+              }
+
+              return QuizModel(
+                id: quizData['id'] ?? '',
+                title: quizData['title'] ?? '',
+                description: quizData['description'] ?? '',
+                difficulty: quizData['difficulty'] ?? 'Easy',
+                rewardPoints: quizData['rewardPoints'] ?? 10,
+                questions:
+                    (quizData['questions'] as List<dynamic>? ?? [])
+                        .map(
+                          (q) => QuizQuestion(
+                            question: q['question'] ?? '',
+                            options:
+                                (q['options'] as List<dynamic>? ?? [])
+                                    .map((o) => o.toString())
+                                    .toList(),
+                            correctOptionIndex: q['correctOptionIndex'] ?? 0,
+                            explanation: q['explanation'],
+                          ),
+                        )
+                        .toList(),
+                category: quizData['category'] ?? 'General',
+                imageUrl: determinedImageUrl,
+              );
+            }).toList();
         _completedQuizIds = completedQuizIds;
         _userPoints = userPoints;
         _isLoading = false;

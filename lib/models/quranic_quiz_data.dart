@@ -40,7 +40,7 @@ class QuranicQuizData {
               'Prophet Musa (Moses)',
               'Prophet Ibrahim (Abraham)',
               'Prophet Isa (Jesus)',
-              'Prophet Muhammad'
+              'Prophet Muhammad',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -52,7 +52,7 @@ class QuranicQuizData {
               'Prophet Musa (Moses)',
               'Prophet Ibrahim (Abraham)',
               'Prophet Nuh (Noah)',
-              'Prophet Muhammad'
+              'Prophet Muhammad',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -71,7 +71,7 @@ class QuranicQuizData {
               'Surah Yasin',
               'Surah Al-Fatiha',
               'Surah Al-Ikhlas',
-              'Surah Ar-Rahman'
+              'Surah Ar-Rahman',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -115,7 +115,7 @@ class QuranicQuizData {
               'Prophet Nuh (Noah)',
               'Prophet Ibrahim (Abraham)',
               'Prophet Musa (Moses)',
-              'Prophet Dawud (David)'
+              'Prophet Dawud (David)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -128,7 +128,7 @@ class QuranicQuizData {
               'Prophet Ibrahim (Abraham)',
               'Prophet Musa (Moses)',
               'Prophet Yunus (Jonah)',
-              'Prophet Yusuf (Joseph)'
+              'Prophet Yusuf (Joseph)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -140,7 +140,7 @@ class QuranicQuizData {
               'Prophet Yunus (Jonah)',
               'Prophet Yusuf (Joseph)',
               'Prophet Ayyub (Job)',
-              'Prophet Sulaiman (Solomon)'
+              'Prophet Sulaiman (Solomon)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -152,7 +152,7 @@ class QuranicQuizData {
               'Prophet Sulaiman (Solomon)',
               'Prophet Dawud (David)',
               'Prophet Musa (Moses)',
-              'Prophet Ibrahim (Abraham)'
+              'Prophet Ibrahim (Abraham)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -165,7 +165,7 @@ class QuranicQuizData {
               'Prophet Ayyub (Job)',
               'Prophet Yunus (Jonah)',
               'Prophet Yusuf (Joseph)',
-              'Prophet Zakariya (Zechariah)'
+              'Prophet Zakariya (Zechariah)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -177,7 +177,7 @@ class QuranicQuizData {
               'Prophet Yusuf (Joseph)',
               'Prophet Yahya (John)',
               'Prophet Ismail (Ishmael)',
-              'Prophet Lut (Lot)'
+              'Prophet Lut (Lot)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -189,7 +189,7 @@ class QuranicQuizData {
               'Prophet Musa (Moses)',
               'Prophet Nuh (Noah)',
               'Prophet Isa (Jesus)',
-              'Prophet Muhammad'
+              'Prophet Muhammad',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -202,7 +202,7 @@ class QuranicQuizData {
               'Prophet Isa (Jesus)',
               'Prophet Muhammad',
               'Prophet Dawud (David)',
-              'Prophet Sulaiman (Solomon)'
+              'Prophet Sulaiman (Solomon)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -214,7 +214,7 @@ class QuranicQuizData {
               'Prophet Ibrahim (Abraham)',
               'Prophet Muhammad',
               'Prophet Dawud (David)',
-              'Prophet Nuh (Noah)'
+              'Prophet Nuh (Noah)',
             ],
             correctOptionIndex: 0,
             explanation:
@@ -226,7 +226,7 @@ class QuranicQuizData {
               'Prophet Dawud (David)',
               'Prophet Musa (Moses)',
               'Prophet Ibrahim (Abraham)',
-              'Prophet Isa (Jesus)'
+              'Prophet Isa (Jesus)',
             ],
             correctOptionIndex: 0,
             explanation:

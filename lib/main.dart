@@ -12,6 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'firebase_notification_service.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:muslim_kids/add_multiple_quizzes.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:muslim_kids/quiz_debug_screen.dart';
 
@@ -108,7 +109,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: AuthWrapper(),
-      routes: {'/quiz_debug': (context) => const QuizDebugScreen()},
+      routes: {},
     );
   }
 }
