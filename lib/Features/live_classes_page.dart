@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart'; // Add clipboard functionality
+import 'package:muslim_kids/local_notification_service.dart'; // Added import
 
 class LiveClassesPage extends StatelessWidget {
   const LiveClassesPage({super.key});
@@ -445,6 +446,75 @@ class LiveClassesPage extends StatelessWidget {
                           return true; // Keep classes with unparseable dates by default
                         }
                       }).toList();
+
+                  // Schedule reminders for upcoming classes on the kid's device
+                  for (var classDoc in upcomingClasses) {
+                    try {
+                      var classData = classDoc.data() as Map<String, dynamic>;
+                      String classId = classDoc.id;
+                      String topic = classData['topic'] ?? 'Unknown Topic';
+                      String dateStr = classData['date'];
+                      String timeStr = classData['time'];
+                      // Get reminderMinutes from classData, default to 15 if not present or invalid
+                      int reminderMinutes = 15; // Default value
+                      if (classData.containsKey('reminderMinutes')) {
+                        final dynamic rawReminderMinutes =
+                            classData['reminderMinutes'];
+                        if (rawReminderMinutes is int) {
+                          reminderMinutes =
+                              rawReminderMinutes > 0 ? rawReminderMinutes : 15;
+                        } else if (rawReminderMinutes is String) {
+                          final parsedMinutes = int.tryParse(
+                            rawReminderMinutes,
+                          );
+                          reminderMinutes =
+                              (parsedMinutes != null && parsedMinutes > 0)
+                                  ? parsedMinutes
+                                  : 15;
+                        }
+                      }
+
+                      DateTime classDateTime = DateFormat(
+                        'yyyy-MM-dd hh:mm a',
+                      ).parse('$dateStr $timeStr');
+                      DateTime reminderTime = classDateTime.subtract(
+                        Duration(
+                          minutes: reminderMinutes,
+                        ), // Use fetched reminderMinutes
+                      );
+
+                      if (reminderTime.isAfter(DateTime.now())) {
+                        // Using a distinct ID for student-side reminders
+                        int notificationId =
+                            ("${classId}_student_reminder").hashCode;
+                        String notificationTitle = "Class Reminder";
+                        String notificationBody =
+                            "Class: $topic, Time: $timeStr ($reminderMinutes mins before)"; // Updated body
+
+                        // Schedule without awaiting to prevent UI blocking
+                        LocalNotificationService.scheduleNotification(
+                              id: notificationId,
+                              title: notificationTitle,
+                              body: notificationBody,
+                              scheduledTime: reminderTime,
+                            )
+                            .then((_) {
+                              debugPrint(
+                                "Student Reminder: Scheduled $reminderMinutes-min reminder for class $classId ($topic) at $reminderTime. ID: $notificationId",
+                              );
+                            })
+                            .catchError((e) {
+                              debugPrint(
+                                "Student Reminder: Error during scheduling for class $classId ($topic): $e",
+                              );
+                            });
+                      }
+                    } catch (e) {
+                      debugPrint(
+                        "Student Reminder: Error processing reminder for class ${classDoc.id}: $e",
+                      );
+                    }
+                  }
 
                   // Filter past classes (classes that have already happened)
                   var pastClasses =

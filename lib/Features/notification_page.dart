@@ -206,163 +206,115 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 244, 143),
-      appBar: AppBar(
-        backgroundColor: Colors.pink[200],
-        automaticallyImplyLeading: false, // Disable automatic back button
-        leading:
-            widget.fromBottomNav
-                ? null // Don't show back button if opened from bottom nav
-                : IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
+  Widget _buildNotificationItem(Map<String, dynamic> notification) {
+    final title = notification['title'] ?? 'No Title';
+    final message = notification['message'] ?? 'No Message';
+    final timestamp = notification['timestamp'] as Timestamp?;
+    final bool isRead = notification['read'] ?? false;
+    final String notificationType = notification['type'] ?? '';
+
+    IconData iconData;
+    Color iconColor;
+
+    switch (notificationType) {
+      case 'class':
+      case 'class_reminder':
+      case 'class_update':
+        iconData = Icons.class_;
+        iconColor = Colors.blue.shade700;
+        break;
+      case 'prayer_alarm':
+        iconData = Icons.alarm;
+        iconColor = Colors.orange.shade700;
+        break;
+      case 'system':
+        iconData = Icons.info_outline;
+        iconColor = Colors.green.shade700;
+        break;
+      default:
+        iconData = Icons.notifications;
+        iconColor = Colors.grey.shade700;
+    }
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color:
+              isRead ? Colors.grey.shade300 : _getBorderColor(notificationType),
+          width: 1.5,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(
+          backgroundColor: iconColor.withOpacity(0.15),
+          child: Icon(iconData, color: iconColor, size: 28),
+        ),
         title: Text(
-          'Notifications',
-          style: GoogleFonts.kanit(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+          title,
+          style: GoogleFonts.lato(
+            fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+            fontSize: 17,
+            color: isRead ? Colors.grey.shade700 : Colors.black87,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.black),
-            onPressed: _loadNotifications,
-          ),
-        ],
-      ),
-      body:
-          isLoading
-              ? Center(child: CircularProgressIndicator())
-              : notifications.isEmpty
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.notifications_off, size: 80, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      'No notifications yet',
-                      style: GoogleFonts.kanit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'When your teacher schedules a class,\nyou\'ll see it here!',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.kanit(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              : ListView.builder(
-                padding: EdgeInsets.all(16),
-                itemCount: notifications.length,
-                itemBuilder: (context, index) {
-                  final notification = notifications[index];
-                  final bool isRead = notification['read'] ?? false;
-                  final DateTime timestamp =
-                      notification['timestamp'] != null
-                          ? (notification['timestamp'] as Timestamp).toDate()
-                          : DateTime.now();
-                  final String timeAgo = _getTimeAgo(timestamp);
-
-                  return Card(
-                    margin: EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isRead ? Colors.transparent : Colors.blue,
-                        width: isRead ? 0 : 2,
-                      ),
-                    ),
-                    elevation: isRead ? 1 : 3,
-                    child: InkWell(
-                      onTap: () => _handleNotificationTap(notification),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                if (!isRead)
-                                  Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    margin: EdgeInsets.only(right: 8),
-                                  ),
-                                Expanded(
-                                  child: Text(
-                                    notification['title'] ?? 'Notification',
-                                    style: GoogleFonts.kanit(
-                                      fontSize: 18,
-                                      fontWeight:
-                                          isRead
-                                              ? FontWeight.normal
-                                              : FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  timeAgo,
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              notification['message'] ?? '',
-                              style: GoogleFonts.kanit(
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            if (notification['type'] == 'class')
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  icon: Icon(Icons.video_call),
-                                  label: Text('View Class'),
-                                  onPressed:
-                                      () =>
-                                          _handleNotificationTap(notification),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: isRead ? Colors.grey.shade600 : Colors.black54,
               ),
+            ),
+            if (timestamp != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _formatTimestamp(timestamp),
+                style: GoogleFonts.lato(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ],
+        ),
+        isThreeLine: true,
+        onTap: () => _handleNotificationTap(notification),
+        // Removed any explicit trailing widget like a "Details" button
+      ),
     );
   }
 
-  String _getTimeAgo(DateTime dateTime) {
-    final Duration difference = DateTime.now().difference(dateTime);
+  Color _getBorderColor(String type) {
+    switch (type) {
+      case 'class':
+      case 'class_reminder':
+      case 'class_update':
+        return Colors.blue.shade300;
+      case 'prayer_alarm':
+        return Colors.orange.shade300;
+      case 'system':
+        return Colors.green.shade300;
+      default:
+        return Colors.purple.shade200; // A default vibrant color
+    }
+  }
+
+  String _formatTimestamp(Timestamp timestamp) {
+    final dateTime = timestamp.toDate();
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
 
     if (difference.inDays > 7) {
-      return DateFormat('MMM d, y').format(dateTime);
+      return DateFormat('dd MMM yyyy, hh:mm a').format(dateTime);
     } else if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
@@ -371,6 +323,265 @@ class _NotificationPageState extends State<NotificationPage> {
       return '${difference.inMinutes}m ago';
     } else {
       return 'Just now';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(
+        255,
+        245,
+        240,
+        247,
+      ), // Lighter purple-ish background
+      appBar: AppBar(
+        backgroundColor: Colors.purple.shade300, // Theme color
+        elevation: 1,
+        automaticallyImplyLeading: !widget.fromBottomNav,
+        leading:
+            widget.fromBottomNav
+                ? null
+                : IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+        title: Text(
+          'Notifications',
+          style: GoogleFonts.kanit(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadNotifications,
+          ),
+          IconButton(
+            // Added for clearing all notifications
+            icon: const Icon(Icons.delete_sweep, color: Colors.white),
+            onPressed: _confirmClearAllNotifications,
+          ),
+        ],
+      ),
+      body:
+          isLoading
+              ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+                ),
+              )
+              : notifications.isEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.notifications_active_outlined,
+                      size: 100,
+                      color: Colors.purple.shade200,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No Notifications Yet',
+                      style: GoogleFonts.lato(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                      child: Text(
+                        'Important updates and class reminders will appear here.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.lato(
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              : RefreshIndicator(
+                onRefresh: _loadNotifications,
+                color: Colors.purple.shade400,
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(
+                    top: 8,
+                    bottom: 80,
+                  ), // Added bottom padding for FAB
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
+                    return _buildNotificationItem(notifications[index]);
+                  },
+                ),
+              ),
+      floatingActionButton:
+          notifications.isNotEmpty
+              ? FloatingActionButton.extended(
+                onPressed: _confirmClearReadNotifications,
+                icon: const Icon(Icons.clear_all),
+                label: const Text('Clear Read'),
+                backgroundColor: Colors.purple.shade400,
+              )
+              : null,
+    );
+  }
+
+  // Placeholder for new methods to clear notifications
+  Future<void> _confirmClearReadNotifications() async {
+    // Implementation to confirm and clear read notifications
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear Read Notifications?'),
+          content: const Text(
+            'Are you sure you want to delete all read notifications? This action cannot be undone.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      _clearReadNotifications();
+    }
+  }
+
+  Future<void> _clearReadNotifications() async {
+    // Actual logic to delete read notifications from Firestore and update UI
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+    List<String> readNotificationIds = [];
+
+    for (var notification in notifications) {
+      if (notification['read'] == true) {
+        readNotificationIds.add(notification['id']);
+        DocumentReference docRef = FirebaseFirestore.instance
+            .collection('notifications')
+            .doc(notification['id']);
+        batch.delete(docRef);
+      }
+    }
+
+    if (readNotificationIds.isNotEmpty) {
+      try {
+        await batch.commit();
+        // Update UI
+        setState(() {
+          notifications.removeWhere(
+            (n) => readNotificationIds.contains(n['id']),
+          );
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Read notifications cleared.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error clearing read notifications: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error clearing notifications: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No read notifications to clear.')),
+      );
+    }
+  }
+
+  Future<void> _confirmClearAllNotifications() async {
+    // Implementation to confirm and clear ALL notifications
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear All Notifications?'),
+          content: const Text(
+            'Are you sure you want to delete ALL notifications? This action cannot be undone.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear All'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      _clearAllNotifications();
+    }
+  }
+
+  Future<void> _clearAllNotifications() async {
+    // Actual logic to delete ALL notifications for the user from Firestore and update UI
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+    List<String> allNotificationIds =
+        notifications.map((n) => n['id'] as String).toList();
+
+    if (allNotificationIds.isNotEmpty) {
+      for (String id in allNotificationIds) {
+        DocumentReference docRef = FirebaseFirestore.instance
+            .collection('notifications')
+            .doc(id);
+        batch.delete(docRef);
+      }
+      try {
+        await batch.commit();
+        // Update UI
+        setState(() {
+          notifications.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All notifications cleared.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error clearing all notifications: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error clearing all notifications: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No notifications to clear.')),
+      );
     }
   }
 }

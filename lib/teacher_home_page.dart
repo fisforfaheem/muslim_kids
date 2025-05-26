@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -7,9 +8,6 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
 import 'Features/teacher_class_details_page.dart';
 
 class TeacherHomePage extends StatefulWidget {
@@ -43,6 +41,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
     String date,
     String time,
     String link,
+    int reminderMinutes,
   ) {
     // Generate a unique class ID
     String classId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -64,6 +63,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
       'link': link,
       'timestamp': FieldValue.serverTimestamp(),
       'studentCount': selectedStudents.length,
+      'reminderMinutes': reminderMinutes,
     });
 
     // Debug the selected students
@@ -172,19 +172,24 @@ class TeacherHomePageState extends State<TeacherHomePage>
                   "You scheduled a class on '$topic' for $date at $time with ${selectedStudents.length} students!",
             );
 
-            // We don't need to schedule additional notifications since we're already
-            // creating notifications in the batch operation above
-
             // Schedule a notification for 15 minutes before class starts
-            Duration timeUntilClass = classDateTime.difference(DateTime.now());
-            if (timeUntilClass.inMinutes > 15) {
-              Duration notifyBefore =
-                  timeUntilClass - const Duration(minutes: 15);
+            final reminderDuration = Duration(minutes: reminderMinutes);
+            DateTime reminderTime = classDateTime.subtract(reminderDuration);
+
+            if (reminderTime.isAfter(DateTime.now())) {
               await LocalNotificationService.scheduleNotification(
                 id: ("${classId}_reminder").hashCode,
-                title: "Class Starting Soon",
-                body: "Your class on '$topic' starts in 15 minutes!",
-                scheduledTime: DateTime.now().add(notifyBefore),
+                title: "Class Reminder",
+                body:
+                    "Class: $topic, Time: $time ($reminderMinutes mins before)",
+                scheduledTime: reminderTime,
+              );
+              debugPrint(
+                "Scheduled $reminderMinutes-min reminder for teacher for class $classId at $reminderTime",
+              );
+            } else {
+              debugPrint(
+                "$reminderMinutes-min reminder for teacher for class $classId is in the past, not scheduling.",
               );
             }
           }
@@ -319,6 +324,8 @@ class TeacherHomePageState extends State<TeacherHomePage>
     final TextEditingController dateController = TextEditingController();
     final TextEditingController timeController = TextEditingController();
     final TextEditingController linkController = TextEditingController();
+    final TextEditingController reminderMinutesController =
+        TextEditingController(text: '15');
 
     // Create a local copy of selectedStudents to avoid direct manipulation
     List<Map<String, dynamic>> localSelectedStudents = [...selectedStudents];
@@ -683,6 +690,63 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                         ? "Please enter class link"
                                         : null,
                           ),
+                          SizedBox(height: 16),
+
+                          // Reminder Minutes Field
+                          Text(
+                            "Reminder Before Class (minutes)",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          TextFormField(
+                            controller: reminderMinutesController,
+                            decoration: InputDecoration(
+                              hintText: "e.g., 10, 15, 30",
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.green.shade700,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return "Please enter reminder minutes";
+                              }
+                              final int? minutes = int.tryParse(value);
+                              if (minutes == null || minutes < 0) {
+                                return "Please enter a valid positive number";
+                              }
+                              return null;
+                            },
+                          ),
                           SizedBox(height: 24),
 
                           // Selected Students
@@ -856,12 +920,20 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                               ];
                                             });
 
+                                            final int reminderMinutes =
+                                                int.tryParse(
+                                                  reminderMinutesController
+                                                      .text,
+                                                ) ??
+                                                15;
+
                                             addClassToFirebase(
                                               teacherController.text,
                                               topicController.text,
                                               dateController.text,
                                               timeController.text,
                                               linkController.text,
+                                              reminderMinutes,
                                             );
                                             Navigator.pop(context);
                                           }
