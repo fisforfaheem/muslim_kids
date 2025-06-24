@@ -3,6 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:muslim_kids/welcome_page1.dart';
+import 'package:muslim_kids/services/user_data_service.dart';
+import 'package:muslim_kids/mixins/safe_state_mixin.dart';
+import 'package:muslim_kids/widgets/loading_skeleton.dart';
+import 'dart:async';
 
 class SettingsPage extends StatefulWidget {
   final bool fromBottomNav;
@@ -13,15 +17,18 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> with SafeStateMixin {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  String? _currentAvatar;
-  String? _currentName;
-  String? _currentEmail;
-  String? _userType;
-  bool _isLoading = true;
+  final UserDataService _userDataService = UserDataService();
   final _formKey = GlobalKey<FormState>();
+  
+  UserData? _userData;
+  bool _isLoading = true;
+  String? _errorMessage;
+  late StreamSubscription<UserData?> _userDataSubscription;
+  late StreamSubscription<bool> _loadingSubscription;
+  late StreamSubscription<String?> _errorSubscription;
 
   // Avatar options
   List<String> avatarImages = [
@@ -34,124 +41,83 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _initializeUserDataService();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _userDataSubscription.cancel();
+    _loadingSubscription.cancel();
+    _errorSubscription.cancel();
     super.dispose();
   }
 
-  Future<void> _loadUserData() async {
-    setState(() => _isLoading = true);
-    try {
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        DocumentSnapshot userDoc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(currentUser.uid)
-                .get();
-
-        if (userDoc.exists) {
-          Map<String, dynamic> userData =
-              userDoc.data() as Map<String, dynamic>;
-
-          if (mounted) {
-            setState(() {
-              _currentName = userData['name'];
-              _currentAvatar = userData['avatar'];
-              _currentEmail = userData['email'] ?? currentUser.email;
-              _userType = userData['userType'] ?? 'Kid';
-
-              _nameController.text = _currentName ?? '';
-              _emailController.text = _currentEmail ?? '';
-            });
-          }
+  /// Initialize user data service and set up listeners
+  void _initializeUserDataService() {
+    // Listen to user data changes
+    _userDataSubscription = _userDataService.userDataStream.listen((userData) {
+      safeSetState(() {
+        _userData = userData;
+        if (userData != null) {
+          _nameController.text = userData.name;
+          _emailController.text = userData.email;
         }
+      });
+    });
+
+    // Listen to loading state changes
+    _loadingSubscription = _userDataService.loadingStream.listen((loading) {
+      safeSetState(() {
+        _isLoading = loading;
+      });
+    });
+
+    // Listen to error state changes
+    _errorSubscription = _userDataService.errorStream.listen((error) {
+      safeSetState(() {
+        _errorMessage = error;
+      });
+      
+      if (error != null) {
+        showErrorMessage(error);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading user data: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    });
+
+    // Initialize the service
+    _userDataService.initialize();
   }
 
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-    try {
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        // Update Firestore document
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .update({
-              'name': _nameController.text.trim(),
-              'avatar': _currentAvatar,
-              'lastUpdated': FieldValue.serverTimestamp(),
-            });
+    final success = await _userDataService.updateUserData(
+      name: _nameController.text.trim(),
+      avatar: _userData?.avatar,
+      email: _emailController.text.trim(),
+    );
 
-        // Update email in Firestore only
-        // Note: Email verification would be needed for Firebase Auth email update
-        if (_currentEmail != _emailController.text.trim() &&
-            _emailController.text.trim().isNotEmpty) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .update({'email': _emailController.text.trim()});
-
-          // Show message about email verification
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Email updated in profile. Note: Your login email remains unchanged.',
-                ),
-                duration: Duration(seconds: 5),
-              ),
-            );
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _currentName = _nameController.text.trim();
-            _currentEmail = _emailController.text.trim();
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+    if (success) {
+      showSuccessMessage('Profile updated successfully');
+      
+      // Show email note if email was changed
+      if (_userData?.email != _emailController.text.trim()) {
+        showErrorMessage(
+          'Email updated in profile. Note: Your login email remains unchanged.',
+          duration: const Duration(seconds: 5),
+        );
       }
     }
   }
 
   void _selectAvatar(String avatar) {
-    setState(() {
-      _currentAvatar = avatar;
-    });
+    // Update avatar through the service
+    _userDataService.updateUserData(
+      name: _userData?.name,
+      avatar: avatar,
+      email: _userData?.email,
+    );
   }
 
   Future<void> _logout() async {
@@ -234,61 +200,88 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: Row(
                           children: [
                             // Avatar
-                            CircleAvatar(
-                              radius: 40,
-                              backgroundImage: AssetImage(
-                                _currentAvatar ?? 'assets/avatar2.jpg',
-                              ),
-                            ),
+                            _isLoading && _userData == null
+                                ? LoadingSkeleton(
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: BorderRadius.circular(40),
+                                  )
+                                : CircleAvatar(
+                                    radius: 40,
+                                    backgroundImage: AssetImage(
+                                      _userData?.avatar ?? 'assets/avatar2.jpg',
+                                    ),
+                                  ),
                             const SizedBox(width: 16),
                             // User info
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _currentName ?? 'User',
-                                    style: GoogleFonts.kanit(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
+                              child: _isLoading && _userData == null
+                                  ? Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        LoadingSkeleton(
+                                          width: double.infinity,
+                                          height: 20,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        LoadingSkeleton(
+                                          width: 150,
+                                          height: 14,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        LoadingSkeleton(
+                                          width: 100,
+                                          height: 20,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ],
+                                    )
+                                  : Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _userData?.name ?? 'User',
+                                          style: GoogleFonts.kanit(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          _userData?.email ?? '',
+                                          style: GoogleFonts.kanit(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _userData?.userType == 'Kid'
+                                                ? Colors.blue[100]
+                                                : Colors.green[100],
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            _userData?.userType == 'Kid'
+                                                ? 'Kid Account'
+                                                : 'Teacher Account',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: _userData?.userType == 'Kid'
+                                                  ? Colors.blue[800]
+                                                  : Colors.green[800],
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  Text(
-                                    _currentEmail ?? '',
-                                    style: GoogleFonts.kanit(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          _userType == 'Kid'
-                                              ? Colors.blue[100]
-                                              : Colors.green[100],
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      _userType == 'Kid'
-                                          ? 'Kid Account'
-                                          : 'Teacher Account',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color:
-                                            _userType == 'Kid'
-                                                ? Colors.blue[800]
-                                                : Colors.green[800],
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                           ],
                         ),
@@ -356,7 +349,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
 
                               // Avatar selection (only for Kid accounts)
-                              if (_userType == 'Kid') ...[
+                              if (_userData?.userType == 'Kid') ...[
                                 const SizedBox(height: 16),
                                 Text(
                                   'Choose Avatar:',
@@ -378,7 +371,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                               shape: BoxShape.circle,
                                               border: Border.all(
                                                 color:
-                                                    _currentAvatar == avatar
+                                                    _userData?.avatar == avatar
                                                         ? Colors.pink
                                                         : Colors.transparent,
                                                 width: 3,
@@ -513,13 +506,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _sendPasswordResetEmail() async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: _currentEmail ?? '',
+        email: _userData?.email ?? '',
       );
       if (mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text('Password reset email sent to $_currentEmail'),
+            content: Text('Password reset email sent to ${_userData?.email}'),
             backgroundColor: Colors.green,
           ),
         );

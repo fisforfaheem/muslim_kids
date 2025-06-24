@@ -9,6 +9,9 @@ import 'package:muslim_kids/local_notification_service.dart'; // Added import
 
 class LiveClassesPage extends StatelessWidget {
   const LiveClassesPage({super.key});
+  
+  // Track scheduled notifications to prevent duplicates
+  static final Set<String> _scheduledNotifications = <String>{};
 
   // Helper method to determine icon based on link
   IconData _getPlatformIcon(String link) {
@@ -81,39 +84,69 @@ class LiveClassesPage extends StatelessWidget {
       return;
     }
 
-    // Update the join status in Firestore - use direct document ID for efficiency
+    // Update the join status in Firestore with improved error handling
     try {
-      // Try to update using the combined document ID format first
+      // Use the consistent document ID format: classId_studentId
+      final enrollmentDocId = '${classId}_$studentId';
       final docRef = FirebaseFirestore.instance
           .collection('class_enrollments')
-          .doc('${classId}_$studentId');
+          .doc(enrollmentDocId);
+
+      debugPrint("Attempting to update join status for enrollment: $enrollmentDocId");
 
       final docSnapshot = await docRef.get();
 
       if (docSnapshot.exists) {
         // Document exists with the expected ID format
-        await docRef.update({'hasJoined': true});
+        await docRef.update({
+          'hasJoined': true,
+          'joinedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint("✅ Successfully updated join status using document ID");
       } else {
-        // Fallback to query if document not found with the expected ID
-        final querySnapshot =
-            await FirebaseFirestore.instance
-                .collection('class_enrollments')
-                .where('classId', isEqualTo: classId)
-                .where('studentId', isEqualTo: studentId)
-                .limit(1)
-                .get();
+        debugPrint("⚠️ Enrollment document not found with ID: $enrollmentDocId");
+        
+        // Fallback: Search for enrollment using query
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('class_enrollments')
+            .where('classId', isEqualTo: classId)
+            .where('studentId', isEqualTo: studentId)
+            .limit(1)
+            .get();
 
         if (querySnapshot.docs.isNotEmpty) {
-          await querySnapshot.docs.first.reference.update({'hasJoined': true});
+          await querySnapshot.docs.first.reference.update({
+            'hasJoined': true,
+            'joinedAt': FieldValue.serverTimestamp(),
+          });
+          debugPrint("✅ Successfully updated join status using query fallback");
         } else {
-          debugPrint(
-            "No enrollment found for student $studentId in class $classId",
-          );
+          debugPrint("❌ No enrollment found for student $studentId in class $classId");
+          
+          // Show warning to user but don't prevent class joining
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Warning: Enrollment not found, but opening class link anyway'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
         }
       }
     } catch (e) {
-      debugPrint("Error updating join status: $e");
-      // Continue with launch attempt even if update fails
+      debugPrint("❌ Error updating join status: $e");
+      // Show error but continue with class joining
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Warning: Could not update join status'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
 
     // Log the link we're trying to launch
@@ -447,14 +480,24 @@ class LiveClassesPage extends StatelessWidget {
                         }
                       }).toList();
 
-                  // Schedule reminders for upcoming classes on the kid's device
+                  // Schedule reminders for upcoming classes on the kid's device (only once per class)
+                  
                   for (var classDoc in upcomingClasses) {
                     try {
                       var classData = classDoc.data() as Map<String, dynamic>;
                       String classId = classDoc.id;
-                      String topic = classData['topic'] ?? 'Unknown Topic';
+                      String topic = classData['title'] ?? classData['topic'] ?? 'Unknown Topic';  // Use new field name
                       String dateStr = classData['date'];
                       String timeStr = classData['time'];
+                      
+                      // Create unique key for this notification
+                      String notificationKey = "${classId}_${studentId}_reminder";
+                      
+                      // Skip if already scheduled
+                      if (_scheduledNotifications.contains(notificationKey)) {
+                        continue;
+                      }
+                      
                       // Get reminderMinutes from classData, default to 15 if not present or invalid
                       int reminderMinutes = 15; // Default value
                       if (classData.containsKey('reminderMinutes')) {
@@ -485,8 +528,7 @@ class LiveClassesPage extends StatelessWidget {
 
                       if (reminderTime.isAfter(DateTime.now())) {
                         // Using a distinct ID for student-side reminders
-                        int notificationId =
-                            ("${classId}_student_reminder").hashCode;
+                        int notificationId = notificationKey.hashCode;
                         String notificationTitle = "Class Reminder";
                         String notificationBody =
                             "Class: $topic, Time: $timeStr ($reminderMinutes mins before)"; // Updated body
@@ -499,6 +541,7 @@ class LiveClassesPage extends StatelessWidget {
                               scheduledTime: reminderTime,
                             )
                             .then((_) {
+                              _scheduledNotifications.add(notificationKey);  // Mark as scheduled
                               debugPrint(
                                 "Student Reminder: Scheduled $reminderMinutes-min reminder for class $classId ($topic) at $reminderTime. ID: $notificationId",
                               );
@@ -806,7 +849,7 @@ class UpcomingClassCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    classData['topic'],
+                    classData['title'] ?? classData['topic'] ?? 'Class',  // Support both field names
                     style: GoogleFonts.kanit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -874,7 +917,7 @@ class UpcomingClassCard extends StatelessWidget {
                   onPressed:
                       () => onJoinClass(
                         context,
-                        classData['link'],
+                        classData['meetingLink'] ?? classData['link'] ?? '',  // Support both field names
                         classId,
                         studentId,
                       ),
@@ -943,7 +986,7 @@ class PastClassCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    classData['topic'],
+                    classData['title'] ?? classData['topic'] ?? 'Class',  // Support both field names
                     style: GoogleFonts.kanit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

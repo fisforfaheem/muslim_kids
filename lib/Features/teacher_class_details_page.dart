@@ -53,7 +53,8 @@ class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
       final data = classDoc.data() as Map<String, dynamic>;
       setState(() {
         classData = {'id': classDoc.id, ...data};
-        linkController.text = data['meetingLink'] ?? '';
+        // Support both old and new field names for backward compatibility
+        linkController.text = data['meetingLink'] ?? data['link'] ?? '';
       });
 
       // Get enrolled students
@@ -230,7 +231,7 @@ class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
             'userId': student['id'],
             'title': 'Class Reminder',
             'message':
-                'Reminder: You have class "${classData['title']}" scheduled at ${_formatClassTime(classData['date'])}',
+                'Reminder: You have class "${classData['title'] ?? classData['topic'] ?? 'Class'}" scheduled at ${_formatClassTime(classData['date'])}',
             'read': false,
             'timestamp': FieldValue.serverTimestamp(),
             'type': 'class_reminder',
@@ -271,9 +272,23 @@ class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
   String _formatClassTime(dynamic date) {
     if (date == null) return 'Unknown time';
 
+    // Handle Timestamp (new format)
     if (date is Timestamp) {
       final DateTime dateTime = date.toDate();
       return DateFormat('MMM dd, yyyy hh:mm a').format(dateTime);
+    }
+    
+    // Handle string date (current format: "yyyy-MM-dd")
+    if (date is String) {
+      try {
+        // Get time from classData if available
+        String timeStr = classData['time'] ?? '12:00 PM';
+        DateTime dateTime = DateFormat('yyyy-MM-dd hh:mm a').parse('$date $timeStr');
+        return DateFormat('MMM dd, yyyy hh:mm a').format(dateTime);
+      } catch (e) {
+        debugPrint('Error parsing date string: $e');
+        return date; // Return the original string if parsing fails
+      }
     }
 
     return 'Unknown time';
@@ -300,7 +315,7 @@ class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              classData['title'] ?? 'No Title',
+                              classData['title'] ?? classData['topic'] ?? 'No Title',  // Support both field names
                               style: Theme.of(context).textTheme.headlineSmall,
                             ),
                             const SizedBox(height: 8),

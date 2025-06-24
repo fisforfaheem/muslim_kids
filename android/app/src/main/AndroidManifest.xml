@@ -28,7 +28,7 @@
     </intent>
 </queries>
     <application
-        android:label="muslim_kids"
+        android:label="Muslim Kids"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">

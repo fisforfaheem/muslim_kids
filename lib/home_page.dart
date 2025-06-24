@@ -10,6 +10,9 @@ import 'package:muslim_kids/Features/quizzes_page.dart';
 import 'package:muslim_kids/Features/settings_page.dart';
 import 'package:muslim_kids/Features/videos_page.dart';
 import 'package:muslim_kids/widgets/islamic_header.dart';
+import 'package:muslim_kids/widgets/loading_skeleton.dart';
+import 'package:muslim_kids/services/user_data_service.dart';
+import 'package:muslim_kids/mixins/safe_state_mixin.dart';
 import 'package:muslim_kids/quiz_debug_screen.dart';
 import 'package:muslim_kids/add_multiple_quizzes.dart';
 import 'teacher_home_page.dart';
@@ -136,26 +139,71 @@ class KidHomePageContent extends StatefulWidget {
   State<KidHomePageContent> createState() => _KidHomePageContentState();
 }
 
-class _KidHomePageContentState extends State<KidHomePageContent> {
-  String? userName;
-  String? userAvatar;
-  bool isLoading = true;
+class _KidHomePageContentState extends State<KidHomePageContent> with SafeStateMixin {
+  final UserDataService _userDataService = UserDataService();
+  UserData? _userData;
+  bool _isLoading = true;
+  String? _errorMessage;
+  late StreamSubscription<UserData?> _userDataSubscription;
+  late StreamSubscription<bool> _loadingSubscription;
+  late StreamSubscription<String?> _errorSubscription;
 
   @override
   void initState() {
     super.initState();
-    // Use initial values if provided
+    
+    // Use initial values if provided for immediate display
     if (widget.initialName != null && widget.initialName!.isNotEmpty) {
-      userName = widget.initialName;
-      isLoading = false;
-    }
-    if (widget.initialAvatar != null && widget.initialAvatar!.isNotEmpty) {
-      userAvatar = widget.initialAvatar;
-      isLoading = false;
+      _userData = UserData(
+        uid: FirebaseAuth.instance.currentUser?.uid ?? '',
+        name: widget.initialName!,
+        email: '',
+        avatar: widget.initialAvatar ?? 'assets/avatar2.jpg',
+        userType: 'Kid',
+      );
+      _isLoading = false;
     }
 
-    // Still load from Firestore to get the most up-to-date data
-    _loadUserData();
+    _initializeUserDataService();
+  }
+
+  /// Initialize user data service and set up listeners
+  void _initializeUserDataService() {
+    // Listen to user data changes
+    _userDataSubscription = _userDataService.userDataStream.listen((userData) {
+      safeSetState(() {
+        _userData = userData;
+      });
+    });
+
+    // Listen to loading state changes
+    _loadingSubscription = _userDataService.loadingStream.listen((loading) {
+      safeSetState(() {
+        _isLoading = loading;
+      });
+    });
+
+    // Listen to error state changes
+    _errorSubscription = _userDataService.errorStream.listen((error) {
+      safeSetState(() {
+        _errorMessage = error;
+      });
+      
+      if (error != null) {
+        showErrorMessage(error);
+      }
+    });
+
+    // Initialize the service
+    _userDataService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _userDataSubscription.cancel();
+    _loadingSubscription.cancel();
+    _errorSubscription.cancel();
+    super.dispose();
   }
 
   void _logout() async {
@@ -182,48 +230,6 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
         fontSize: 18.0,
         toastLength: Toast.LENGTH_SHORT,
       );
-    }
-  }
-
-  Future<void> _loadUserData() async {
-    if (!mounted) return;
-
-    try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        setState(() => isLoading = false);
-        return;
-      }
-
-      // Add timeout to prevent hanging requests
-      final userDoc = await Future.any([
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .get(),
-        Future.delayed(
-          const Duration(seconds: 5),
-          () => throw TimeoutException('Request timed out'),
-        ),
-      ]);
-
-      if (!mounted) return;
-
-      if (userDoc.exists) {
-        final userData = userDoc.data() as Map<String, dynamic>;
-        setState(() {
-          userName = userData['name'] ?? 'User';
-          userAvatar = userData['avatar'] ?? 'assets/avatar2.jpg';
-          isLoading = false;
-        });
-      } else {
-        setState(() => isLoading = false);
-      }
-    } catch (e) {
-      debugPrint('Error loading user data: $e');
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
     }
   }
 
@@ -280,9 +286,9 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
       backgroundColor: const Color.fromARGB(255, 255, 244, 143),
       extendBody: true,
       appBar: IslamicHeader(
-        avatarPath: userAvatar,
-        userName: userName ?? 'User',
-        isLoading: isLoading,
+        avatarPath: _userData?.avatar,
+        userName: _userData?.name ?? 'User',
+        isLoading: _isLoading,
         onLogoutPressed: _logout,
       ),
       body: Container(
@@ -432,22 +438,42 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                        child: GridView.builder(
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount:
-                                    MediaQuery.of(context).size.width < 360
-                                        ? 2
-                                        : 3,
-                                crossAxisSpacing: 15,
-                                mainAxisSpacing: 15,
-                                childAspectRatio:
-                                    MediaQuery.of(context).size.width < 360
-                                        ? 0.9
-                                        : 0.8,
-                              ),
-                          itemCount: tiles.length,
-                          itemBuilder: (context, index) {
+                        child: _isLoading && _userData == null
+                            ? GridView.builder(
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount:
+                                          MediaQuery.of(context).size.width < 360
+                                              ? 2
+                                              : 3,
+                                      crossAxisSpacing: 15,
+                                      mainAxisSpacing: 15,
+                                      childAspectRatio:
+                                          MediaQuery.of(context).size.width < 360
+                                              ? 0.9
+                                              : 0.8,
+                                    ),
+                                itemCount: 6,
+                                itemBuilder: (context, index) {
+                                  return const GridTileLoadingSkeleton();
+                                },
+                              )
+                            : GridView.builder(
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount:
+                                          MediaQuery.of(context).size.width < 360
+                                              ? 2
+                                              : 3,
+                                      crossAxisSpacing: 15,
+                                      mainAxisSpacing: 15,
+                                      childAspectRatio:
+                                          MediaQuery.of(context).size.width < 360
+                                              ? 0.9
+                                              : 0.8,
+                                    ),
+                                itemCount: tiles.length,
+                                itemBuilder: (context, index) {
                             return GestureDetector(
                               onTap: () {
                                 Navigator.push(
@@ -506,19 +532,26 @@ class _KidHomePageContentState extends State<KidHomePageContent> {
                                           tiles[index]['title'],
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight: FontWeight.w900,
                                             color: Colors.white,
-                                            fontSize: 16,
+                                            fontSize: 15,
+                                            letterSpacing: 0.5,
+                                            height: 1.2,
                                             shadows: [
                                               Shadow(
-                                                offset: Offset(1, 1),
+                                                offset: Offset(0, 1),
+                                                blurRadius: 3,
+                                                color: Color.fromARGB(200, 0, 0, 0),
+                                              ),
+                                              Shadow(
+                                                offset: Offset(1, 0),
                                                 blurRadius: 2,
-                                                color: Color.fromARGB(
-                                                  150,
-                                                  0,
-                                                  0,
-                                                  0,
-                                                ),
+                                                color: Color.fromARGB(150, 0, 0, 0),
+                                              ),
+                                              Shadow(
+                                                offset: Offset(-1, 0),
+                                                blurRadius: 2,
+                                                color: Color.fromARGB(100, 0, 0, 0),
                                               ),
                                             ],
                                           ),
