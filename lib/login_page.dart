@@ -357,15 +357,20 @@ class LoginPageState extends State<LoginPage> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withOpacity(0.95),
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: Colors.blue.shade200,
-                          width: 2,
+                          color: const Color.fromARGB(
+                            255,
+                            255,
+                            193,
+                            7,
+                          ).withOpacity(0.5),
+                          width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blue.shade100,
+                            color: Colors.black.withOpacity(0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -375,12 +380,19 @@ class LoginPageState extends State<LoginPage> {
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                Icons.security,
-                                color: Colors.blue.shade700,
-                                size: 20,
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade600,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.security,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 10),
                               const Text(
                                 'Select Your Role',
                                 style: TextStyle(
@@ -391,7 +403,7 @@ class LoginPageState extends State<LoginPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
                           Row(
                             children: [
                               Expanded(
@@ -402,22 +414,27 @@ class LoginPageState extends State<LoginPage> {
                                     backgroundColor:
                                         isKidProfile
                                             ? Colors.blue.shade600
-                                            : Colors.grey.shade200,
+                                            : Colors.grey.shade100,
                                     foregroundColor:
                                         isKidProfile
                                             ? Colors.white
-                                            : Colors.black87,
+                                            : Colors.grey.shade700,
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                                      vertical: 14,
                                     ),
+                                    elevation: isKidProfile ? 4 : 1,
+                                    shadowColor:
+                                        isKidProfile
+                                            ? Colors.blue.shade300
+                                            : Colors.grey.shade300,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(12),
                                       side: BorderSide(
                                         color:
                                             isKidProfile
                                                 ? Colors.blue.shade600
-                                                : Colors.grey.shade400,
-                                        width: 2,
+                                                : Colors.grey.shade300,
+                                        width: 1.5,
                                       ),
                                     ),
                                   ),
@@ -433,11 +450,12 @@ class LoginPageState extends State<LoginPage> {
                                     'Student',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed:
@@ -447,22 +465,27 @@ class LoginPageState extends State<LoginPage> {
                                     backgroundColor:
                                         !isKidProfile
                                             ? Colors.green.shade600
-                                            : Colors.grey.shade200,
+                                            : Colors.grey.shade100,
                                     foregroundColor:
                                         !isKidProfile
                                             ? Colors.white
-                                            : Colors.black87,
+                                            : Colors.grey.shade700,
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                                      vertical: 14,
                                     ),
+                                    elevation: !isKidProfile ? 4 : 1,
+                                    shadowColor:
+                                        !isKidProfile
+                                            ? Colors.green.shade300
+                                            : Colors.grey.shade300,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(12),
                                       side: BorderSide(
                                         color:
                                             !isKidProfile
                                                 ? Colors.green.shade600
-                                                : Colors.grey.shade400,
-                                        width: 2,
+                                                : Colors.grey.shade300,
+                                        width: 1.5,
                                       ),
                                     ),
                                   ),
@@ -478,13 +501,14 @@ class LoginPageState extends State<LoginPage> {
                                     'Teacher',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                     ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             'Please select your account type before logging in',
                             style: TextStyle(
@@ -501,12 +525,84 @@ class LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
+                      decoration: InputDecoration(
+                        labelText: 'Email Address',
+                        labelStyle: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: 'Enter your email',
+                        hintStyle: TextStyle(color: Colors.grey.shade500),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.95),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: const Color.fromARGB(
+                              255,
+                              255,
+                              193,
+                              7,
+                            ).withOpacity(0.4),
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color.fromARGB(255, 255, 193, 7),
+                            width: 2.0,
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 2.0,
+                          ),
+                        ),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(
+                              255,
+                              255,
+                              193,
+                              7,
+                            ).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.email,
+                            color: Color.fromARGB(255, 255, 193, 7),
+                            size: 20,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email';
@@ -517,16 +613,88 @@ class LoginPageState extends State<LoginPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: passwordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                        labelStyle: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: 'Enter your password',
+                        hintStyle: TextStyle(color: Colors.grey.shade500),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.95),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: const Color.fromARGB(
+                              255,
+                              255,
+                              193,
+                              7,
+                            ).withOpacity(0.4),
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color.fromARGB(255, 255, 193, 7),
+                            width: 2.0,
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 2.0,
+                          ),
+                        ),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(
+                              255,
+                              255,
+                              193,
+                              7,
+                            ).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.lock,
+                            color: Color.fromARGB(255, 255, 193, 7),
+                            size: 20,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';

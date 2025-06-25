@@ -98,7 +98,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
     }
 
     await batch.commit();
-    
+
     setState(() {
       selectedStudents = [];
     });
@@ -287,42 +287,54 @@ class TeacherHomePageState extends State<TeacherHomePage>
     // Get current user info
     final currentUser = FirebaseAuth.instance.currentUser;
     String teacherName = 'Teacher';
-    
+
     if (currentUser != null) {
       try {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .get();
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .get();
         if (userDoc.exists) {
-          teacherName = userDoc.data()?['name'] ?? currentUser.displayName ?? 'Teacher';
+          teacherName =
+              userDoc.data()?['name'] ?? currentUser.displayName ?? 'Teacher';
         }
       } catch (e) {
         debugPrint("Error getting user name: $e");
       }
     }
 
-    final TextEditingController teacherController = TextEditingController(text: teacherName);
+    final TextEditingController teacherController = TextEditingController(
+      text: teacherName,
+    );
     final TextEditingController topicController = TextEditingController();
     final TextEditingController dateController = TextEditingController();
     final TextEditingController timeController = TextEditingController();
     final TextEditingController linkController = TextEditingController();
-    
+
     List<Map<String, dynamic>> dialogSelectedStudents = [...selectedStudents];
     List<Map<String, dynamic>> allStudents = [];
 
     // Load all students
     try {
-      final studentsQuery = await FirebaseFirestore.instance.collection('users').get();
-      allStudents = studentsQuery.docs.where((doc) {
-        final data = doc.data();
-        final userType = data['userType']?.toString() ?? '';
-        return userType.toLowerCase() == 'kid' || userType.toLowerCase().contains('student');
-      }).map((doc) => {
-        'id': doc.id,
-        'name': doc.data()['name'] ?? 'Student',
-        'email': doc.data()['email'] ?? '',
-      }).toList();
+      final studentsQuery =
+          await FirebaseFirestore.instance.collection('users').get();
+      allStudents =
+          studentsQuery.docs
+              .where((doc) {
+                final data = doc.data();
+                final userType = data['userType']?.toString() ?? '';
+                return userType.toLowerCase() == 'kid' ||
+                    userType.toLowerCase().contains('student');
+              })
+              .map(
+                (doc) => {
+                  'id': doc.id,
+                  'name': doc.data()['name'] ?? 'Student',
+                  'email': doc.data()['email'] ?? '',
+                },
+              )
+              .toList();
     } catch (e) {
       debugPrint("Error loading students: $e");
     }
@@ -380,7 +392,9 @@ class TeacherHomePageState extends State<TeacherHomePage>
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Container(
                 width: double.maxFinite,
                 constraints: BoxConstraints(
@@ -395,9 +409,14 @@ class TeacherHomePageState extends State<TeacherHomePage>
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green.shade600, Colors.green.shade500],
+                          colors: [
+                            Colors.green.shade600,
+                            Colors.green.shade500,
+                          ],
                         ),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -407,7 +426,11 @@ class TeacherHomePageState extends State<TeacherHomePage>
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.event_note, color: Colors.white, size: 24),
+                            child: Icon(
+                              Icons.event_note,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                           SizedBox(width: 16),
                           Expanded(
@@ -442,13 +465,17 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Icon(Icons.close, color: Colors.white, size: 18),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // Content
                     Expanded(
                       child: SingleChildScrollView(
@@ -474,23 +501,33 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+                                    borderSide: BorderSide(
+                                      color: Colors.green.shade700,
+                                      width: 2,
+                                    ),
                                   ),
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
                                 ),
                               ),
                             ),
-                            
+
                             // Class Topic
                             _buildFormField(
                               "Class Topic",
@@ -502,30 +539,41 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                   fontWeight: FontWeight.w600,
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: "e.g., Quran Recitation, Islamic History",
+                                  hintText:
+                                      "e.g., Quran Recitation, Islamic History",
                                   hintStyle: GoogleFonts.poppins(
                                     color: Colors.grey.shade500,
                                     fontSize: 14,
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+                                    borderSide: BorderSide(
+                                      color: Colors.green.shade700,
+                                      width: 2,
+                                    ),
                                   ),
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
                                 ),
                               ),
                             ),
-                            
+
                             // Date
                             _buildFormField(
                               "Class Date",
@@ -545,25 +593,38 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+                                    borderSide: BorderSide(
+                                      color: Colors.green.shade700,
+                                      width: 2,
+                                    ),
                                   ),
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  suffixIcon: Icon(Icons.arrow_drop_down, color: Colors.green.shade600),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                  suffixIcon: Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Colors.green.shade600,
+                                  ),
                                 ),
                                 onTap: selectDate,
                               ),
                             ),
-                            
+
                             // Time
                             _buildFormField(
                               "Class Time",
@@ -583,25 +644,38 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+                                    borderSide: BorderSide(
+                                      color: Colors.green.shade700,
+                                      width: 2,
+                                    ),
                                   ),
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  suffixIcon: Icon(Icons.arrow_drop_down, color: Colors.green.shade600),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                  suffixIcon: Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Colors.green.shade600,
+                                  ),
                                 ),
                                 onTap: selectTime,
                               ),
                             ),
-                            
+
                             // Meeting Link
                             _buildFormField(
                               "Meeting Link",
@@ -613,38 +687,52 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                   fontWeight: FontWeight.w600,
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: "https://zoom.us/j/... or WhatsApp link",
+                                  hintText:
+                                      "https://zoom.us/j/... or WhatsApp link",
                                   hintStyle: GoogleFonts.poppins(
                                     color: Colors.grey.shade500,
                                     fontSize: 14,
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+                                    borderSide: BorderSide(
+                                      color: Colors.green.shade700,
+                                      width: 2,
+                                    ),
                                   ),
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
                                 ),
                               ),
                             ),
-                            
+
                             SizedBox(height: 20),
-                            
+
                             // Students Section
                             Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.green.shade200, width: 1.5),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
+                                  width: 1.5,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.green.shade100,
@@ -660,9 +748,14 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                     padding: EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
-                                        colors: [Colors.green.shade50, Colors.green.shade100],
+                                        colors: [
+                                          Colors.green.shade50,
+                                          Colors.green.shade100,
+                                        ],
                                       ),
-                                      borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(15),
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
@@ -670,9 +763,15 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                           padding: EdgeInsets.all(8),
                                           decoration: BoxDecoration(
                                             color: Colors.green.shade600,
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
-                                          child: Icon(Icons.people, color: Colors.white, size: 18),
+                                          child: Icon(
+                                            Icons.people,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
                                         ),
                                         SizedBox(width: 10),
                                         Expanded(
@@ -687,10 +786,15 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                           ),
                                         ),
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 5,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: Colors.green.shade600,
-                                            borderRadius: BorderRadius.circular(15),
+                                            borderRadius: BorderRadius.circular(
+                                              15,
+                                            ),
                                           ),
                                           child: Text(
                                             "${dialogSelectedStudents.length}",
@@ -704,14 +808,18 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                       ],
                                     ),
                                   ),
-                                  
+
                                   if (allStudents.isEmpty)
                                     Padding(
                                       padding: EdgeInsets.all(20),
                                       child: Center(
                                         child: Column(
                                           children: [
-                                            Icon(Icons.person_off, size: 48, color: Colors.grey.shade400),
+                                            Icon(
+                                              Icons.person_off,
+                                              size: 48,
+                                              color: Colors.grey.shade400,
+                                            ),
                                             SizedBox(height: 12),
                                             Text(
                                               "No students found",
@@ -737,19 +845,34 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                     Container(
                                       height: 200,
                                       child: ListView.builder(
-                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
                                         itemCount: allStudents.length,
                                         itemBuilder: (context, index) {
                                           final student = allStudents[index];
-                                          final isSelected = dialogSelectedStudents.any((s) => s['id'] == student['id']);
-                                          
+                                          final isSelected =
+                                              dialogSelectedStudents.any(
+                                                (s) => s['id'] == student['id'],
+                                              );
+
                                           return Container(
-                                            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                            margin: EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 4,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: isSelected ? Colors.green.shade50 : Colors.grey.shade50,
-                                              borderRadius: BorderRadius.circular(12),
+                                              color:
+                                                  isSelected
+                                                      ? Colors.green.shade50
+                                                      : Colors.grey.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               border: Border.all(
-                                                color: isSelected ? Colors.green.shade300 : Colors.grey.shade200,
+                                                color:
+                                                    isSelected
+                                                        ? Colors.green.shade300
+                                                        : Colors.grey.shade200,
                                                 width: 1.5,
                                               ),
                                             ),
@@ -758,11 +881,22 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                               onChanged: (value) {
                                                 setDialogState(() {
                                                   if (value == true) {
-                                                    if (!dialogSelectedStudents.any((s) => s['id'] == student['id'])) {
-                                                      dialogSelectedStudents.add(student);
+                                                    if (!dialogSelectedStudents
+                                                        .any(
+                                                          (s) =>
+                                                              s['id'] ==
+                                                              student['id'],
+                                                        )) {
+                                                      dialogSelectedStudents
+                                                          .add(student);
                                                     }
                                                   } else {
-                                                    dialogSelectedStudents.removeWhere((s) => s['id'] == student['id']);
+                                                    dialogSelectedStudents
+                                                        .removeWhere(
+                                                          (s) =>
+                                                              s['id'] ==
+                                                              student['id'],
+                                                        );
                                                   }
                                                 });
                                               },
@@ -782,10 +916,14 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                                 ),
                                               ),
                                               secondary: CircleAvatar(
-                                                backgroundColor: isSelected ? Colors.green.shade600 : Colors.grey.shade400,
+                                                backgroundColor:
+                                                    isSelected
+                                                        ? Colors.green.shade600
+                                                        : Colors.grey.shade400,
                                                 radius: 20,
                                                 child: Text(
-                                                  (student['name'] ?? 'S')[0].toUpperCase(),
+                                                  (student['name'] ?? 'S')[0]
+                                                      .toUpperCase(),
                                                   style: GoogleFonts.poppins(
                                                     color: Colors.white,
                                                     fontWeight: FontWeight.w700,
@@ -793,9 +931,12 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                                   ),
                                                 ),
                                               ),
-                                              activeColor: Colors.green.shade700,
+                                              activeColor:
+                                                  Colors.green.shade700,
                                               checkColor: Colors.white,
-                                              controlAffinity: ListTileControlAffinity.trailing,
+                                              controlAffinity:
+                                                  ListTileControlAffinity
+                                                      .trailing,
                                             ),
                                           );
                                         },
@@ -808,14 +949,18 @@ class TeacherHomePageState extends State<TeacherHomePage>
                         ),
                       ),
                     ),
-                    
+
                     // Actions
                     Container(
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-                        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(20),
+                        ),
+                        border: Border(
+                          top: BorderSide(color: Colors.grey.shade200),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -843,37 +988,47 @@ class TeacherHomePageState extends State<TeacherHomePage>
                           Expanded(
                             flex: 2,
                             child: ElevatedButton(
-                              onPressed: dialogSelectedStudents.isEmpty
-                                  ? null
-                                  : () async {
-                                      if (_validateForm(teacherController, topicController, 
-                                          dateController, timeController, linkController)) {
-                                        // Update the main selected students list
-                                        setState(() {
-                                          selectedStudents = [...dialogSelectedStudents];
-                                        });
-                                        
-                                        await addClassToFirebase(
-                                          teacherController.text,
-                                          topicController.text,
-                                          dateController.text,
-                                          timeController.text,
-                                          linkController.text,
-                                          15,
-                                        );
-                                        Navigator.pop(context);
-                                      }
-                                    },
+                              onPressed:
+                                  dialogSelectedStudents.isEmpty
+                                      ? null
+                                      : () async {
+                                        if (_validateForm(
+                                          teacherController,
+                                          topicController,
+                                          dateController,
+                                          timeController,
+                                          linkController,
+                                        )) {
+                                          // Update the main selected students list
+                                          setState(() {
+                                            selectedStudents = [
+                                              ...dialogSelectedStudents,
+                                            ];
+                                          });
+
+                                          await addClassToFirebase(
+                                            teacherController.text,
+                                            topicController.text,
+                                            dateController.text,
+                                            timeController.text,
+                                            linkController.text,
+                                            15,
+                                          );
+                                          Navigator.pop(context);
+                                        }
+                                      },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: dialogSelectedStudents.isEmpty 
-                                    ? Colors.grey.shade400 
-                                    : Colors.green.shade700,
+                                backgroundColor:
+                                    dialogSelectedStudents.isEmpty
+                                        ? Colors.grey.shade400
+                                        : Colors.green.shade700,
                                 foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                elevation: dialogSelectedStudents.isEmpty ? 0 : 3,
+                                elevation:
+                                    dialogSelectedStudents.isEmpty ? 0 : 3,
                                 shadowColor: Colors.green.shade300,
                               ),
                               child: Row(
@@ -977,10 +1132,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 }
@@ -1008,10 +1160,7 @@ class ClassesTab extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.green.shade700,
-                Colors.green.shade500,
-              ],
+              colors: [Colors.green.shade700, Colors.green.shade500],
             ),
             boxShadow: [
               BoxShadow(
@@ -1099,14 +1248,15 @@ class ClassesTab extends StatelessWidget {
             ],
           ),
         ),
-        
+
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('classes')
-                .where('teacherId', isEqualTo: currentUser.uid)
-                .orderBy('timestamp', descending: true)
-                .snapshots(),
+            stream:
+                FirebaseFirestore.instance
+                    .collection('classes')
+                    .where('teacherId', isEqualTo: currentUser.uid)
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(
@@ -1114,7 +1264,9 @@ class ClassesTab extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade700),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.green.shade700,
+                        ),
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -1140,7 +1292,11 @@ class ClassesTab extends StatelessWidget {
                           color: Colors.red.shade50,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                        child: Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: Colors.red.shade400,
+                        ),
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -1205,7 +1361,10 @@ class ClassesTab extends StatelessWidget {
                       ),
                       SizedBox(height: 32),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.shade100,
                           borderRadius: BorderRadius.circular(25),
@@ -1214,7 +1373,11 @@ class ClassesTab extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.touch_app, color: Colors.green.shade600, size: 20),
+                            Icon(
+                              Icons.touch_app,
+                              color: Colors.green.shade600,
+                              size: 20,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               "Tap the + button to get started",
@@ -1240,7 +1403,7 @@ class ClassesTab extends StatelessWidget {
                 itemBuilder: (context, index) {
                   var classData = classes[index].data() as Map<String, dynamic>;
                   var docId = classes[index].id;
-                  
+
                   return Container(
                     margin: EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
@@ -1261,9 +1424,14 @@ class ClassesTab extends StatelessWidget {
                           padding: EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Colors.green.shade600, Colors.green.shade500],
+                              colors: [
+                                Colors.green.shade600,
+                                Colors.green.shade500,
+                              ],
                             ),
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -1273,7 +1441,11 @@ class ClassesTab extends StatelessWidget {
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Icon(Icons.book, color: Colors.white, size: 20),
+                                child: Icon(
+                                  Icons.book,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                               SizedBox(width: 12),
                               Expanded(
@@ -1296,78 +1468,116 @@ class ClassesTab extends StatelessWidget {
                                 ),
                               ),
                               PopupMenuButton<String>(
-                                icon: Icon(Icons.more_vert, color: Colors.white),
+                                icon: Icon(
+                                  Icons.more_vert,
+                                  color: Colors.white,
+                                ),
                                 onSelected: (value) {
                                   if (value == 'delete') {
                                     _showDeleteConfirmation(context, docId);
                                   }
                                 },
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete, color: Colors.red, size: 20),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Delete Class',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.red.shade700,
-                                          ),
+                                itemBuilder:
+                                    (context) => [
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                              size: 20,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Delete Class',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.red.shade700,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                      ),
+                                    ],
                               ),
                             ],
                           ),
                         ),
-                        
+
                         // Class details
                         Padding(
                           padding: EdgeInsets.all(20),
                           child: Column(
                             children: [
-                              _buildClassDetail(Icons.person, 'Teacher', classData['teacher'] ?? 'Unknown'),
+                              _buildClassDetail(
+                                Icons.person,
+                                'Teacher',
+                                classData['teacher'] ?? 'Unknown',
+                              ),
                               SizedBox(height: 12),
-                              _buildClassDetail(Icons.calendar_today, 'Date', classData['date'] ?? 'Not set'),
+                              _buildClassDetail(
+                                Icons.calendar_today,
+                                'Date',
+                                classData['date'] ?? 'Not set',
+                              ),
                               SizedBox(height: 12),
-                              _buildClassDetail(Icons.access_time, 'Time', classData['time'] ?? 'Not set'),
+                              _buildClassDetail(
+                                Icons.access_time,
+                                'Time',
+                                classData['time'] ?? 'Not set',
+                              ),
                               SizedBox(height: 12),
-                              _buildClassDetail(Icons.group, 'Students', '${classData['studentCount'] ?? 0} enrolled'),
-                              
-                              if (classData['meetingLink'] != null && 
-                                  classData['meetingLink'].isNotEmpty && 
-                                  !_isClassExpired(classData['date'], classData['time'])) ...[
+                              _buildClassDetail(
+                                Icons.group,
+                                'Students',
+                                '${classData['studentCount'] ?? 0} enrolled',
+                              ),
+
+                              if (classData['meetingLink'] != null &&
+                                  classData['meetingLink'].isNotEmpty &&
+                                  !_isClassExpired(
+                                    classData['date'],
+                                    classData['time'],
+                                  )) ...[
                                 SizedBox(height: 16),
                                 Container(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
                                     onPressed: () async {
                                       try {
-                                        String meetingLink = classData['meetingLink'];
-                                        
+                                        String meetingLink =
+                                            classData['meetingLink'];
+
                                         // Ensure the URL has a proper scheme
-                                        if (!meetingLink.startsWith('http://') && !meetingLink.startsWith('https://')) {
+                                        if (!meetingLink.startsWith(
+                                              'http://',
+                                            ) &&
+                                            !meetingLink.startsWith(
+                                              'https://',
+                                            )) {
                                           meetingLink = 'https://$meetingLink';
                                         }
-                                        
+
                                         final Uri url = Uri.parse(meetingLink);
-                                        
+
                                         if (await canLaunchUrl(url)) {
                                           await launchUrl(
                                             url,
-                                            mode: LaunchMode.externalApplication,
+                                            mode:
+                                                LaunchMode.externalApplication,
                                           );
                                         } else {
                                           // Show error message if link can't be opened
                                           if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
                                               SnackBar(
-                                                content: Text('Unable to open meeting link'),
+                                                content: Text(
+                                                  'Unable to open meeting link',
+                                                ),
                                                 backgroundColor: Colors.red,
                                               ),
                                             );
@@ -1376,9 +1586,13 @@ class ClassesTab extends StatelessWidget {
                                       } catch (e) {
                                         // Show error message if there's an exception
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
-                                              content: Text('Invalid meeting link format'),
+                                              content: Text(
+                                                'Invalid meeting link format',
+                                              ),
                                               backgroundColor: Colors.red,
                                             ),
                                           );
@@ -1398,7 +1612,10 @@ class ClassesTab extends StatelessWidget {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blue.shade600,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 14,
+                                        horizontal: 20,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
@@ -1407,22 +1624,34 @@ class ClassesTab extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                              ] else if (classData['meetingLink'] != null && 
-                                         classData['meetingLink'].isNotEmpty && 
-                                         _isClassExpired(classData['date'], classData['time'])) ...[
+                              ] else if (classData['meetingLink'] != null &&
+                                  classData['meetingLink'].isNotEmpty &&
+                                  _isClassExpired(
+                                    classData['date'],
+                                    classData['time'],
+                                  )) ...[
                                 SizedBox(height: 16),
                                 Container(
                                   width: double.infinity,
-                                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 14,
+                                    horizontal: 20,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade200,
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey.shade300),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.schedule, color: Colors.grey.shade600, size: 20),
+                                      Icon(
+                                        Icons.schedule,
+                                        color: Colors.grey.shade600,
+                                        size: 20,
+                                      ),
                                       SizedBox(width: 8),
                                       Text(
                                         'Class Ended',
@@ -1502,10 +1731,10 @@ class ClassesTab extends StatelessWidget {
     try {
       // Parse the date (format: yyyy-MM-dd)
       DateTime classDate = DateTime.parse(date);
-      
+
       // Parse the time (format could be various, handle common formats)
       DateTime now = DateTime.now();
-      
+
       // Handle different time formats
       DateTime classDateTime;
       if (time.contains('AM') || time.contains('PM')) {
@@ -1514,13 +1743,13 @@ class ClassesTab extends StatelessWidget {
         final hourMinute = timeParts[0].split(':');
         int hour = int.parse(hourMinute[0]);
         int minute = int.parse(hourMinute[1]);
-        
+
         if (timeParts[1].toUpperCase() == 'PM' && hour != 12) {
           hour += 12;
         } else if (timeParts[1].toUpperCase() == 'AM' && hour == 12) {
           hour = 0;
         }
-        
+
         classDateTime = DateTime(
           classDate.year,
           classDate.month,
@@ -1533,7 +1762,7 @@ class ClassesTab extends StatelessWidget {
         final hourMinute = time.split(':');
         int hour = int.parse(hourMinute[0]);
         int minute = int.parse(hourMinute[1]);
-        
+
         classDateTime = DateTime(
           classDate.year,
           classDate.month,
@@ -1542,10 +1771,9 @@ class ClassesTab extends StatelessWidget {
           minute,
         );
       }
-      
+
       // Consider class expired if it's more than 2 hours past the scheduled time
       return now.isAfter(classDateTime.add(Duration(hours: 2)));
-      
     } catch (e) {
       // If parsing fails, assume not expired to be safe
       return false;
@@ -1557,7 +1785,9 @@ class ClassesTab extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(Icons.warning, color: Colors.orange),
@@ -1565,7 +1795,9 @@ class ClassesTab extends StatelessWidget {
               Text('Delete Class'),
             ],
           ),
-          content: Text('Are you sure you want to delete this class? This action cannot be undone.'),
+          content: Text(
+            'Are you sure you want to delete this class? This action cannot be undone.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1573,7 +1805,10 @@ class ClassesTab extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                FirebaseFirestore.instance.collection('classes').doc(docId).delete();
+                FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(docId)
+                    .delete();
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -1613,7 +1848,9 @@ class StudentsTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade700),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Colors.green.shade700,
+                  ),
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -1639,7 +1876,11 @@ class StudentsTab extends StatelessWidget {
                     color: Colors.red.shade50,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                  child: Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.red.shade400,
+                  ),
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -1696,12 +1937,13 @@ class StudentsTab extends StatelessWidget {
           );
         }
 
-        final students = snapshot.data!.docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final userType = data['userType']?.toString() ?? '';
-          return userType.toLowerCase() == 'kid' || 
-                 userType.toLowerCase().contains('student');
-        }).toList();
+        final students =
+            snapshot.data!.docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final userType = data['userType']?.toString() ?? '';
+              return userType.toLowerCase() == 'kid' ||
+                  userType.toLowerCase().contains('student');
+            }).toList();
 
         if (students.isEmpty) {
           return Center(
@@ -1799,7 +2041,10 @@ class StudentsTab extends StatelessWidget {
                   ),
                   if (selectedStudents.isNotEmpty)
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
@@ -1816,19 +2061,22 @@ class StudentsTab extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Students List
             Expanded(
               child: ListView.builder(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 itemCount: students.length,
                 itemBuilder: (context, index) {
-                  var studentData = students[index].data() as Map<String, dynamic>;
+                  var studentData =
+                      students[index].data() as Map<String, dynamic>;
                   String studentId = students[index].id;
                   String studentName = studentData['name'] ?? 'Student';
                   String studentEmail = studentData['email'] ?? '';
 
-                  bool isSelected = selectedStudents.any((s) => s['id'] == studentId);
+                  bool isSelected = selectedStudents.any(
+                    (s) => s['id'] == studentId,
+                  );
 
                   // Generate avatar color based on name
                   final colors = [
@@ -1839,7 +2087,8 @@ class StudentsTab extends StatelessWidget {
                     Colors.pink.shade400,
                     Colors.teal.shade400,
                   ];
-                  final avatarColor = colors[studentName.hashCode % colors.length];
+                  final avatarColor =
+                      colors[studentName.hashCode % colors.length];
 
                   return Container(
                     margin: EdgeInsets.only(bottom: 12),
@@ -1847,7 +2096,10 @@ class StudentsTab extends StatelessWidget {
                       color: isSelected ? Colors.green.shade50 : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? Colors.green.shade300 : Colors.grey.shade200,
+                        color:
+                            isSelected
+                                ? Colors.green.shade300
+                                : Colors.grey.shade200,
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: [
@@ -1896,7 +2148,8 @@ class StudentsTab extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            (studentName.isNotEmpty ? studentName[0] : 'S').toUpperCase(),
+                            (studentName.isNotEmpty ? studentName[0] : 'S')
+                                .toUpperCase(),
                             style: GoogleFonts.poppins(
                               color: avatarColor,
                               fontWeight: FontWeight.bold,
@@ -1908,7 +2161,10 @@ class StudentsTab extends StatelessWidget {
                       activeColor: Colors.green.shade600,
                       checkColor: Colors.white,
                       controlAffinity: ListTileControlAffinity.trailing,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
                   );
                 },
@@ -1919,4 +2175,4 @@ class StudentsTab extends StatelessWidget {
       },
     );
   }
-} 
+}

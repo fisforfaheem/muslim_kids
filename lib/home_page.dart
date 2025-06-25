@@ -139,7 +139,8 @@ class KidHomePageContent extends StatefulWidget {
   State<KidHomePageContent> createState() => _KidHomePageContentState();
 }
 
-class _KidHomePageContentState extends State<KidHomePageContent> with SafeStateMixin {
+class _KidHomePageContentState extends State<KidHomePageContent>
+    with SafeStateMixin {
   final UserDataService _userDataService = UserDataService();
   UserData? _userData;
   bool _isLoading = true;
@@ -151,7 +152,7 @@ class _KidHomePageContentState extends State<KidHomePageContent> with SafeStateM
   @override
   void initState() {
     super.initState();
-    
+
     // Use initial values if provided for immediate display
     if (widget.initialName != null && widget.initialName!.isNotEmpty) {
       _userData = UserData(
@@ -188,7 +189,7 @@ class _KidHomePageContentState extends State<KidHomePageContent> with SafeStateM
       safeSetState(() {
         _errorMessage = error;
       });
-      
+
       if (error != null) {
         showErrorMessage(error);
       }
@@ -438,143 +439,173 @@ class _KidHomePageContentState extends State<KidHomePageContent> with SafeStateM
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                        child: _isLoading && _userData == null
-                            ? GridView.builder(
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount:
-                                          MediaQuery.of(context).size.width < 360
-                                              ? 2
-                                              : 3,
-                                      crossAxisSpacing: 15,
-                                      mainAxisSpacing: 15,
-                                      childAspectRatio:
-                                          MediaQuery.of(context).size.width < 360
-                                              ? 0.9
-                                              : 0.8,
-                                    ),
-                                itemCount: 6,
-                                itemBuilder: (context, index) {
-                                  return const GridTileLoadingSkeleton();
-                                },
-                              )
-                            : GridView.builder(
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount:
-                                          MediaQuery.of(context).size.width < 360
-                                              ? 2
-                                              : 3,
-                                      crossAxisSpacing: 15,
-                                      mainAxisSpacing: 15,
-                                      childAspectRatio:
-                                          MediaQuery.of(context).size.width < 360
-                                              ? 0.9
-                                              : 0.8,
-                                    ),
-                                itemCount: tiles.length,
-                                itemBuilder: (context, index) {
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => tiles[index]['page'],
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          (tiles[index]['color'] as Color)
-                                              .withAlpha(180),
-                                          tiles[index]['color'] as Color,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
+                        child:
+                            _isLoading && _userData == null
+                                ? GridView.builder(
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount:
+                                            MediaQuery.of(context).size.width <
+                                                    360
+                                                ? 2
+                                                : 3,
+                                        crossAxisSpacing: 15,
+                                        mainAxisSpacing: 15,
+                                        childAspectRatio:
+                                            MediaQuery.of(context).size.width <
+                                                    360
+                                                ? 0.9
+                                                : 0.8,
                                       ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (tiles[index]['color']
-                                                  as Color)
-                                              .withAlpha(100),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                          offset: const Offset(2, 4),
-                                        ),
-                                      ],
-                                      border: Border.all(
-                                        color: Colors.white.withAlpha(50),
-                                        width: 1.5,
+                                  itemCount: 6,
+                                  itemBuilder: (context, index) {
+                                    return const GridTileLoadingSkeleton();
+                                  },
+                                )
+                                : GridView.builder(
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount:
+                                            MediaQuery.of(context).size.width <
+                                                    360
+                                                ? 2
+                                                : 3,
+                                        crossAxisSpacing: 15,
+                                        mainAxisSpacing: 15,
+                                        childAspectRatio:
+                                            MediaQuery.of(context).size.width <
+                                                    360
+                                                ? 0.9
+                                                : 0.8,
                                       ),
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withAlpha(50),
-                                            shape: BoxShape.circle,
+                                  itemCount: tiles.length,
+                                  itemBuilder: (context, index) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) =>
+                                                    tiles[index]['page'],
                                           ),
-                                          child: Image.asset(
-                                            tiles[index]['image'],
-                                            height: 50,
-                                            width: 50,
-                                            fit: BoxFit.contain,
+                                        );
+                                      },
+                                      child: Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  (tiles[index]['color']
+                                                          as Color)
+                                                      .withAlpha(180),
+                                                  tiles[index]['color']
+                                                      as Color,
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(25),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: (tiles[index]['color']
+                                                          as Color)
+                                                      .withAlpha(100),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 1,
+                                                  offset: const Offset(2, 4),
+                                                ),
+                                              ],
+                                              border: Border.all(
+                                                color: Colors.white.withAlpha(
+                                                  50,
+                                                ),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    10,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white
+                                                        .withAlpha(50),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Image.asset(
+                                                    tiles[index]['image'],
+                                                    height: 50,
+                                                    width: 50,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Text(
+                                                  tiles[index]['title'],
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                    fontSize: 15,
+                                                    letterSpacing: 0.5,
+                                                    height: 1.2,
+                                                    shadows: [
+                                                      Shadow(
+                                                        offset: Offset(0, 1),
+                                                        blurRadius: 3,
+                                                        color: Color.fromARGB(
+                                                          200,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                        ),
+                                                      ),
+                                                      Shadow(
+                                                        offset: Offset(1, 0),
+                                                        blurRadius: 2,
+                                                        color: Color.fromARGB(
+                                                          150,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                        ),
+                                                      ),
+                                                      Shadow(
+                                                        offset: Offset(-1, 0),
+                                                        blurRadius: 2,
+                                                        color: Color.fromARGB(
+                                                          100,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                          .animate()
+                                          .fadeIn(
+                                            duration: Duration(
+                                              milliseconds: 300 + (index * 100),
+                                            ),
+                                          )
+                                          .slideY(
+                                            begin: 0.1,
+                                            end: 0,
+                                            duration: Duration(
+                                              milliseconds: 300 + (index * 50),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          tiles[index]['title'],
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            color: Colors.white,
-                                            fontSize: 15,
-                                            letterSpacing: 0.5,
-                                            height: 1.2,
-                                            shadows: [
-                                              Shadow(
-                                                offset: Offset(0, 1),
-                                                blurRadius: 3,
-                                                color: Color.fromARGB(200, 0, 0, 0),
-                                              ),
-                                              Shadow(
-                                                offset: Offset(1, 0),
-                                                blurRadius: 2,
-                                                color: Color.fromARGB(150, 0, 0, 0),
-                                              ),
-                                              Shadow(
-                                                offset: Offset(-1, 0),
-                                                blurRadius: 2,
-                                                color: Color.fromARGB(100, 0, 0, 0),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                  .animate()
-                                  .fadeIn(
-                                    duration: Duration(
-                                      milliseconds: 300 + (index * 100),
-                                    ),
-                                  )
-                                  .slideY(
-                                    begin: 0.1,
-                                    end: 0,
-                                    duration: Duration(
-                                      milliseconds: 300 + (index * 50),
-                                    ),
-                                  ),
-                            );
-                          },
-                        ),
+                                    );
+                                  },
+                                ),
                       ),
                     ),
                   ],
