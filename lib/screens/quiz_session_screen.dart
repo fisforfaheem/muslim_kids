@@ -6,7 +6,6 @@ import 'package:muslim_kids/screens/quiz_completion_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/rendering.dart';
 
 class QuizSessionScreen extends StatefulWidget {
   final QuizModel quiz;
@@ -196,6 +195,9 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                 correctAnswers: correctAnswers,
                 totalQuestions: widget.quiz.questions.length,
                 earnedPoints: earnedPoints,
+                onContinue: () {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
               ),
         ),
       );
@@ -368,7 +370,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                               borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withOpacity(0.2),
+                                  color: Colors.grey.withValues(alpha: 0.2),
                                   spreadRadius: 2,
                                   blurRadius: 5,
                                   offset: const Offset(0, 3),
@@ -415,10 +417,14 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: _currentThemeColor.withOpacity(0.1),
+                                color: _currentThemeColor.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: _currentThemeColor.withOpacity(0.3),
+                                  color: _currentThemeColor.withValues(
+                                    alpha: 0.3,
+                                  ),
                                 ),
                               ),
                               child: Column(
@@ -452,7 +458,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                       color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.grey.withValues(alpha: 0.2),
                           spreadRadius: 1,
                           blurRadius: 5,
                           offset: const Offset(0, -2),
@@ -543,9 +549,9 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
       }
     } else {
       backgroundColor =
-          isSelected ? _currentThemeColor.withOpacity(0.2) : Colors.white;
+          isSelected ? _currentThemeColor.withValues(alpha: 0.2) : Colors.white;
       borderColor =
-          isSelected ? _currentThemeColor : Colors.grey.withOpacity(0.5);
+          isSelected ? _currentThemeColor : Colors.grey.withValues(alpha: 0.5);
     }
 
     return GestureDetector(
@@ -567,7 +573,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                 color:
                     isSelected
                         ? _currentThemeColor
-                        : Colors.grey.withOpacity(0.3),
+                        : Colors.grey.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: Center(

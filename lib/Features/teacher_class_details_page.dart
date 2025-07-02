@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:intl/intl.dart';
 
 class TeacherClassDetailsPage extends StatefulWidget {
@@ -9,11 +9,10 @@ class TeacherClassDetailsPage extends StatefulWidget {
   const TeacherClassDetailsPage({super.key, required this.classId});
 
   @override
-  _TeacherClassDetailsPageState createState() =>
-      _TeacherClassDetailsPageState();
+  TeacherClassDetailsPageState createState() => TeacherClassDetailsPageState();
 }
 
-class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
+class TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
   bool isLoading = true;
   Map<String, dynamic> classData = {};
   List<Map<String, dynamic>> enrolledStudents = [];
@@ -277,13 +276,15 @@ class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
       final DateTime dateTime = date.toDate();
       return DateFormat('MMM dd, yyyy hh:mm a').format(dateTime);
     }
-    
+
     // Handle string date (current format: "yyyy-MM-dd")
     if (date is String) {
       try {
         // Get time from classData if available
         String timeStr = classData['time'] ?? '12:00 PM';
-        DateTime dateTime = DateFormat('yyyy-MM-dd hh:mm a').parse('$date $timeStr');
+        DateTime dateTime = DateFormat(
+          'yyyy-MM-dd hh:mm a',
+        ).parse('$date $timeStr');
         return DateFormat('MMM dd, yyyy hh:mm a').format(dateTime);
       } catch (e) {
         debugPrint('Error parsing date string: $e');
@@ -315,7 +316,9 @@ class _TeacherClassDetailsPageState extends State<TeacherClassDetailsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              classData['title'] ?? classData['topic'] ?? 'No Title',  // Support both field names
+                              classData['title'] ??
+                                  classData['topic'] ??
+                                  'No Title', // Support both field names
                               style: Theme.of(context).textTheme.headlineSmall,
                             ),
                             const SizedBox(height: 8),

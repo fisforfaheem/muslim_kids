@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:muslim_kids/models/badge_model.dart';
 import 'package:muslim_kids/models/quiz_model.dart';
+import 'package:muslim_kids/services/badge_service.dart';
 
-class QuizCompletionScreen extends StatelessWidget {
+class QuizCompletionScreen extends StatefulWidget {
   final QuizModel quiz;
   final int correctAnswers;
   final int totalQuestions;
   final int earnedPoints;
+  final VoidCallback onContinue;
 
   const QuizCompletionScreen({
     super.key,
@@ -15,9 +18,33 @@ class QuizCompletionScreen extends StatelessWidget {
     required this.correctAnswers,
     required this.totalQuestions,
     required this.earnedPoints,
+    required this.onContinue,
   });
 
-  double get score => correctAnswers / totalQuestions;
+  @override
+  State<QuizCompletionScreen> createState() => _QuizCompletionScreenState();
+}
+
+class _QuizCompletionScreenState extends State<QuizCompletionScreen> {
+  final BadgeService _badgeService = BadgeService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndAwardBadges();
+  }
+
+  Future<void> _checkAndAwardBadges() async {
+    final newBadges = await _badgeService.checkAndAwardBadges();
+    if (newBadges.isNotEmpty && mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) => BadgeUnlockedDialog(badges: newBadges),
+      );
+    }
+  }
+
+  double get score => widget.correctAnswers / widget.totalQuestions;
 
   String get resultMessage {
     if (score >= 0.9) {
@@ -86,7 +113,7 @@ class QuizCompletionScreen extends StatelessWidget {
 
             // Quiz title
             Text(
-              quiz.title,
+              widget.quiz.title,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
@@ -143,7 +170,7 @@ class QuizCompletionScreen extends StatelessWidget {
               children: [
                 _buildStatCard(
                   'Score',
-                  '$correctAnswers/$totalQuestions',
+                  '${widget.correctAnswers}/${widget.totalQuestions}',
                   Icons.check_circle,
                   Colors.blue,
                 ),
@@ -200,7 +227,7 @@ class QuizCompletionScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        '$earnedPoints',
+                        '${widget.earnedPoints}',
                         style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -211,7 +238,7 @@ class QuizCompletionScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'You earned ${(earnedPoints / quiz.rewardPoints * 100).toInt()}% of available points',
+                    'You earned ${(widget.earnedPoints / widget.quiz.rewardPoints * 100).toInt()}% of available points',
                     style: const TextStyle(fontSize: 14, color: Colors.white),
                   ),
                   const SizedBox(height: 5),
@@ -230,10 +257,7 @@ class QuizCompletionScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
+                    onPressed: widget.onContinue,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
@@ -254,9 +278,7 @@ class QuizCompletionScreen extends StatelessWidget {
                 const SizedBox(width: 15),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: widget.onContinue,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.pink[200],
                       foregroundColor: Colors.white,
@@ -356,6 +378,73 @@ class QuizCompletionScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class BadgeUnlockedDialog extends StatelessWidget {
+  final List<BadgeModel> badges;
+  const BadgeUnlockedDialog({super.key, required this.badges});
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = badges.first; // Show one badge at a time for simplicity
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: Colors.transparent,
+      contentPadding: EdgeInsets.zero,
+      content: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [badge.color.withValues(alpha: 0.8), badge.color],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Badge Unlocked!',
+              style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.white,
+              child: Icon(badge.icon, size: 50, color: badge.color),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              badge.name,
+              style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              badge.description,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: badge.color,
+              ),
+              child: const Text('Awesome!'),
+            )
+          ],
+        ),
       ),
     );
   }

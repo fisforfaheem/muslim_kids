@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:muslim_kids/welcome_page1.dart';
 import 'package:muslim_kids/services/user_data_service.dart';
 import 'package:muslim_kids/mixins/safe_state_mixin.dart';
 import 'package:muslim_kids/widgets/loading_skeleton.dart';
+import 'package:muslim_kids/widgets/navigation_helper.dart';
 import 'dart:async';
 
 class SettingsPage extends StatefulWidget {
@@ -22,10 +23,9 @@ class _SettingsPageState extends State<SettingsPage> with SafeStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final UserDataService _userDataService = UserDataService();
   final _formKey = GlobalKey<FormState>();
-  
+
   UserData? _userData;
   bool _isLoading = true;
-  String? _errorMessage;
   late StreamSubscription<UserData?> _userDataSubscription;
   late StreamSubscription<bool> _loadingSubscription;
   late StreamSubscription<String?> _errorSubscription;
@@ -76,10 +76,6 @@ class _SettingsPageState extends State<SettingsPage> with SafeStateMixin {
 
     // Listen to error state changes
     _errorSubscription = _userDataService.errorStream.listen((error) {
-      safeSetState(() {
-        _errorMessage = error;
-      });
-      
       if (error != null) {
         showErrorMessage(error);
       }
@@ -100,7 +96,7 @@ class _SettingsPageState extends State<SettingsPage> with SafeStateMixin {
 
     if (success) {
       showSuccessMessage('Profile updated successfully');
-      
+
       // Show email note if email was changed
       if (_userData?.email != _emailController.text.trim()) {
         showErrorMessage(
@@ -202,86 +198,98 @@ class _SettingsPageState extends State<SettingsPage> with SafeStateMixin {
                             // Avatar
                             _isLoading && _userData == null
                                 ? LoadingSkeleton(
-                                    width: 80,
-                                    height: 80,
-                                    borderRadius: BorderRadius.circular(40),
-                                  )
+                                  width: 80,
+                                  height: 80,
+                                  borderRadius: BorderRadius.circular(40),
+                                )
                                 : CircleAvatar(
-                                    radius: 40,
-                                    backgroundImage: AssetImage(
-                                      _userData?.avatar ?? 'assets/avatar2.jpg',
-                                    ),
+                                  radius: 40,
+                                  backgroundImage: AssetImage(
+                                    _userData?.avatar ?? 'assets/avatar2.jpg',
                                   ),
+                                ),
                             const SizedBox(width: 16),
                             // User info
                             Expanded(
-                              child: _isLoading && _userData == null
-                                  ? Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        LoadingSkeleton(
-                                          width: double.infinity,
-                                          height: 20,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        LoadingSkeleton(
-                                          width: 150,
-                                          height: 14,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        LoadingSkeleton(
-                                          width: 100,
-                                          height: 20,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      ],
-                                    )
-                                  : Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _userData?.name ?? 'User',
-                                          style: GoogleFonts.kanit(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
+                              child:
+                                  _isLoading && _userData == null
+                                      ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          LoadingSkeleton(
+                                            width: double.infinity,
+                                            height: 20,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
-                                        ),
-                                        Text(
-                                          _userData?.email ?? '',
-                                          style: GoogleFonts.kanit(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
+                                          const SizedBox(height: 8),
+                                          LoadingSkeleton(
+                                            width: 150,
+                                            height: 14,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
+                                          const SizedBox(height: 8),
+                                          LoadingSkeleton(
+                                            width: 100,
+                                            height: 20,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: _userData?.userType == 'Kid'
-                                                ? Colors.blue[100]
-                                                : Colors.green[100],
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            _userData?.userType == 'Kid'
-                                                ? 'Kid Account'
-                                                : 'Teacher Account',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: _userData?.userType == 'Kid'
-                                                  ? Colors.blue[800]
-                                                  : Colors.green[800],
+                                        ],
+                                      )
+                                      : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _userData?.name ?? 'User',
+                                            style: GoogleFonts.kanit(
+                                              fontSize: 20,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                          Text(
+                                            _userData?.email ?? '',
+                                            style: GoogleFonts.kanit(
+                                              fontSize: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  _userData?.userType == 'Kid'
+                                                      ? Colors.blue[100]
+                                                      : Colors.green[100],
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              _userData?.userType == 'Kid'
+                                                  ? 'Kid Account'
+                                                  : 'Teacher Account',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color:
+                                                    _userData?.userType == 'Kid'
+                                                        ? Colors.blue[800]
+                                                        : Colors.green[800],
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                             ),
                           ],
                         ),
@@ -415,6 +423,11 @@ class _SettingsPageState extends State<SettingsPage> with SafeStateMixin {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // Parental Controls Section
+                    const ParentalControlsWidget(),
 
                     const SizedBox(height: 16),
 

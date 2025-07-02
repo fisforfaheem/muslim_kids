@@ -100,7 +100,7 @@ class RegisterPageState extends State<RegisterPage> {
           return PopScope(
             canPop: false, // Prevent dialog dismissal with back button
             child: Scaffold(
-              backgroundColor: Colors.black.withOpacity(0.5),
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
               body: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

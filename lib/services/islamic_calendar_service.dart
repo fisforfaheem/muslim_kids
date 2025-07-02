@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:muslim_kids/models/islamic_event.dart';
 
 class IslamicCalendarService {
@@ -270,7 +271,7 @@ class IslamicCalendarService {
         return IslamicEvent.fromMap(data);
       }).toList();
     } catch (e) {
-      print('Error getting Islamic events: $e');
+      debugPrint('Error getting Islamic events: $e');
       // Return sample events if there's an error
       return _sampleEvents;
     }
@@ -296,7 +297,7 @@ class IslamicCalendarService {
 
       return eventsMap[dateKey];
     } catch (e) {
-      print('Error getting event for date: $e');
+      debugPrint('Error getting event for date: $e');
       return null;
     }
   }
@@ -307,15 +308,16 @@ class IslamicCalendarService {
       WriteBatch batch = _firestore.batch();
 
       for (var event in _sampleEvents) {
-        DocumentReference docRef =
-            _firestore.collection(_collectionName).doc(event.id);
+        DocumentReference docRef = _firestore
+            .collection(_collectionName)
+            .doc(event.id);
         batch.set(docRef, event.toMap());
       }
 
       await batch.commit();
-      print('Sample Islamic events uploaded to Firestore');
+      debugPrint('Sample Islamic events uploaded to Firestore');
     } catch (e) {
-      print('Error uploading sample Islamic events: $e');
+      debugPrint('Error uploading sample Islamic events: $e');
     }
   }
 }

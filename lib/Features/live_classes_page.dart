@@ -9,45 +9,9 @@ import 'package:muslim_kids/local_notification_service.dart'; // Added import
 
 class LiveClassesPage extends StatelessWidget {
   const LiveClassesPage({super.key});
-  
+
   // Track scheduled notifications to prevent duplicates
   static final Set<String> _scheduledNotifications = <String>{};
-
-  // Helper method to determine icon based on link
-  IconData _getPlatformIcon(String link) {
-    if (link.isEmpty) {
-      return Icons.error_outline;
-    } else if (link.contains('whatsapp')) {
-      return Icons.message; // Standard messaging icon for WhatsApp
-    } else if (link.contains('zoom')) {
-      return Icons.video_camera_front;
-    } else if (link.contains('meet') || link.contains('google')) {
-      return Icons.video_call;
-    } else if (link.contains('teams') || link.contains('microsoft')) {
-      return Icons.groups;
-    } else {
-      return Icons.link;
-    }
-  }
-
-  // Helper method to determine platform name based on link
-  String _getPlatformName(String link) {
-    if (link.isEmpty) {
-      return "Unknown";
-    } else if (link.contains('whatsapp')) {
-      return "WhatsApp";
-    } else if (link.contains('zoom')) {
-      return "Zoom";
-    } else if (link.contains('meet') || link.contains('google')) {
-      return "Google Meet";
-    } else if (link.contains('teams') || link.contains('microsoft')) {
-      return "Microsoft Teams";
-    } else if (link.contains('youtube')) {
-      return "YouTube";
-    } else {
-      return "Web Browser";
-    }
-  }
 
   void _launchURL(
     BuildContext context,
@@ -92,7 +56,9 @@ class LiveClassesPage extends StatelessWidget {
           .collection('class_enrollments')
           .doc(enrollmentDocId);
 
-      debugPrint("Attempting to update join status for enrollment: $enrollmentDocId");
+      debugPrint(
+        "Attempting to update join status for enrollment: $enrollmentDocId",
+      );
 
       final docSnapshot = await docRef.get();
 
@@ -104,15 +70,18 @@ class LiveClassesPage extends StatelessWidget {
         });
         debugPrint("✅ Successfully updated join status using document ID");
       } else {
-        debugPrint("⚠️ Enrollment document not found with ID: $enrollmentDocId");
-        
+        debugPrint(
+          "⚠️ Enrollment document not found with ID: $enrollmentDocId",
+        );
+
         // Fallback: Search for enrollment using query
-        final querySnapshot = await FirebaseFirestore.instance
-            .collection('class_enrollments')
-            .where('classId', isEqualTo: classId)
-            .where('studentId', isEqualTo: studentId)
-            .limit(1)
-            .get();
+        final querySnapshot =
+            await FirebaseFirestore.instance
+                .collection('class_enrollments')
+                .where('classId', isEqualTo: classId)
+                .where('studentId', isEqualTo: studentId)
+                .limit(1)
+                .get();
 
         if (querySnapshot.docs.isNotEmpty) {
           await querySnapshot.docs.first.reference.update({
@@ -121,13 +90,17 @@ class LiveClassesPage extends StatelessWidget {
           });
           debugPrint("✅ Successfully updated join status using query fallback");
         } else {
-          debugPrint("❌ No enrollment found for student $studentId in class $classId");
-          
+          debugPrint(
+            "❌ No enrollment found for student $studentId in class $classId",
+          );
+
           // Show warning to user but don't prevent class joining
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Warning: Enrollment not found, but opening class link anyway'),
+                content: Text(
+                  'Warning: Enrollment not found, but opening class link anyway',
+                ),
                 backgroundColor: Colors.orange,
                 duration: Duration(seconds: 3),
               ),
@@ -481,23 +454,27 @@ class LiveClassesPage extends StatelessWidget {
                       }).toList();
 
                   // Schedule reminders for upcoming classes on the kid's device (only once per class)
-                  
+
                   for (var classDoc in upcomingClasses) {
                     try {
                       var classData = classDoc.data() as Map<String, dynamic>;
                       String classId = classDoc.id;
-                      String topic = classData['title'] ?? classData['topic'] ?? 'Unknown Topic';  // Use new field name
+                      String topic =
+                          classData['title'] ??
+                          classData['topic'] ??
+                          'Unknown Topic'; // Use new field name
                       String dateStr = classData['date'];
                       String timeStr = classData['time'];
-                      
+
                       // Create unique key for this notification
-                      String notificationKey = "${classId}_${studentId}_reminder";
-                      
+                      String notificationKey =
+                          "${classId}_${studentId}_reminder";
+
                       // Skip if already scheduled
                       if (_scheduledNotifications.contains(notificationKey)) {
                         continue;
                       }
-                      
+
                       // Get reminderMinutes from classData, default to 15 if not present or invalid
                       int reminderMinutes = 15; // Default value
                       if (classData.containsKey('reminderMinutes')) {
@@ -541,7 +518,9 @@ class LiveClassesPage extends StatelessWidget {
                               scheduledTime: reminderTime,
                             )
                             .then((_) {
-                              _scheduledNotifications.add(notificationKey);  // Mark as scheduled
+                              _scheduledNotifications.add(
+                                notificationKey,
+                              ); // Mark as scheduled
                               debugPrint(
                                 "Student Reminder: Scheduled $reminderMinutes-min reminder for class $classId ($topic) at $reminderTime. ID: $notificationId",
                               );
@@ -849,7 +828,9 @@ class UpcomingClassCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    classData['title'] ?? classData['topic'] ?? 'Class',  // Support both field names
+                    classData['title'] ??
+                        classData['topic'] ??
+                        'Class', // Support both field names
                     style: GoogleFonts.kanit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -861,7 +842,7 @@ class UpcomingClassCard extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -917,7 +898,9 @@ class UpcomingClassCard extends StatelessWidget {
                   onPressed:
                       () => onJoinClass(
                         context,
-                        classData['meetingLink'] ?? classData['link'] ?? '',  // Support both field names
+                        classData['meetingLink'] ??
+                            classData['link'] ??
+                            '', // Support both field names
                         classId,
                         studentId,
                       ),
@@ -986,7 +969,9 @@ class PastClassCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    classData['title'] ?? classData['topic'] ?? 'Class',  // Support both field names
+                    classData['title'] ??
+                        classData['topic'] ??
+                        'Class', // Support both field names
                     style: GoogleFonts.kanit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -998,7 +983,7 @@ class PastClassCard extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

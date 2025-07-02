@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:muslim_kids/models/islamic_video.dart';
 
 class VideoService {
@@ -95,8 +96,9 @@ class VideoService {
   ];
 
   // Get videos from Firestore or return sample videos if none exist
-  Future<List<IslamicVideo>> getIslamicVideos(
-      {bool forceRefresh = false}) async {
+  Future<List<IslamicVideo>> getIslamicVideos({
+    bool forceRefresh = false,
+  }) async {
     try {
       // If force refresh is true, clear Firestore and reload all videos
       if (forceRefresh) {
@@ -118,7 +120,7 @@ class VideoService {
         return IslamicVideo.fromMap(data);
       }).toList();
     } catch (e) {
-      print('Error getting videos: $e');
+      debugPrint('Error getting videos: $e');
       // Return sample videos if there's an error
       return _sampleVideos;
     }
@@ -137,36 +139,17 @@ class VideoService {
         deleteBatch.delete(doc.reference);
       }
       await deleteBatch.commit();
-      print('Cleared all videos from Firestore');
+      debugPrint('Cleared all videos from Firestore');
 
       // Upload all sample videos
       await _uploadSampleVideosToFirestore();
-      print('Reuploaded all videos to Firestore');
+      debugPrint('Reuploaded all videos to Firestore');
     } catch (e) {
-      print('Error clearing and reuploading videos: $e');
+      debugPrint('Error clearing and reuploading videos: $e');
     }
   }
 
-  // Get videos by category
-  Future<List<IslamicVideo>> getVideosByCategory(String category) async {
-    try {
-      QuerySnapshot querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where('category', isEqualTo: category)
-          .get();
 
-      return querySnapshot.docs.map((doc) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        return IslamicVideo.fromMap(data);
-      }).toList();
-    } catch (e) {
-      print('Error getting videos by category: $e');
-      // Filter sample videos by category if there's an error
-      return _sampleVideos
-          .where((video) => video.category == category)
-          .toList();
-    }
-  }
 
   // Upload sample videos to Firestore
   Future<void> _uploadSampleVideosToFirestore() async {
@@ -174,15 +157,16 @@ class VideoService {
       WriteBatch batch = _firestore.batch();
 
       for (var video in _sampleVideos) {
-        DocumentReference docRef =
-            _firestore.collection(_collectionName).doc(video.id);
+        DocumentReference docRef = _firestore
+            .collection(_collectionName)
+            .doc(video.id);
         batch.set(docRef, video.toMap());
       }
 
       await batch.commit();
-      print('Sample videos uploaded to Firestore');
+      debugPrint('Sample videos uploaded to Firestore');
     } catch (e) {
-      print('Error uploading sample videos: $e');
+      debugPrint('Error uploading sample videos: $e');
     }
   }
 }

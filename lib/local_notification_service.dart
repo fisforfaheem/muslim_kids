@@ -3,20 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class LocalNotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
-  static const String TAG = "LocalNotificationService";
+  static const String tag = "LocalNotificationService";
   static bool _initialized = false;
 
   // Initialize the notification service
   static Future<void> initialize() async {
     if (_initialized) {
-      debugPrint('$TAG Already initialized');
+      debugPrint('$tag Already initialized');
       return;
     }
 
@@ -27,9 +27,9 @@ class LocalNotificationService {
     try {
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
-      debugPrint('$TAG Timezone set to: $timeZoneName');
+      debugPrint('$tag Timezone set to: $timeZoneName');
     } catch (e) {
-      debugPrint('$TAG Error setting timezone: $e');
+      debugPrint('$tag Error setting timezone: $e');
       // Use UTC if timezone detection fails
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
@@ -56,7 +56,7 @@ class LocalNotificationService {
     await _notificationsPlugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        debugPrint('$TAG Notification tapped: ${details.payload}');
+        debugPrint('$tag Notification tapped: ${details.payload}');
         // Handle notification tap
       },
     );
@@ -70,7 +70,7 @@ class LocalNotificationService {
     await _requestPermissions();
 
     _initialized = true;
-    debugPrint('$TAG ✅ Notification service initialized successfully');
+    debugPrint('$tag ✅ Notification service initialized successfully');
   }
 
   // Create notification channels for different types of notifications
@@ -115,15 +115,7 @@ class LocalNotificationService {
         playSound: true,
         showBadge: true,
       ),
-      // Test notifications
-      AndroidNotificationChannel(
-        'test_notifications',
-        'Test Notifications',
-        description: 'Test notifications for debugging',
-        importance: Importance.defaultImportance,
-        enableVibration: true,
-        playSound: true,
-      ),
+
     ];
 
     for (final channel in channels) {
@@ -132,7 +124,7 @@ class LocalNotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >()
           ?.createNotificationChannel(channel);
-      debugPrint("$TAG Created notification channel: ${channel.id}");
+      debugPrint("$tag Created notification channel: ${channel.id}");
     }
   }
 
@@ -169,9 +161,9 @@ class LocalNotificationService {
         }
       }
 
-      debugPrint('$TAG ✅ Notification permissions requested');
+      debugPrint('$tag ✅ Notification permissions requested');
     } catch (e) {
-      debugPrint('$TAG ❌ Error requesting permissions: $e');
+      debugPrint('$tag ❌ Error requesting permissions: $e');
     }
   }
 
@@ -208,7 +200,7 @@ class LocalNotificationService {
 
       return false;
     } catch (e) {
-      debugPrint('$TAG ❌ Error checking notification permissions: $e');
+      debugPrint('$tag ❌ Error checking notification permissions: $e');
       return false;
     }
   }
@@ -222,8 +214,7 @@ class LocalNotificationService {
         return 'Class Reminders';
       case 'prayer_notifications':
         return 'Prayer Reminders';
-      case 'test_notifications':
-        return 'Test Notifications';
+
       default:
         return 'Default Notifications';
     }
@@ -238,8 +229,7 @@ class LocalNotificationService {
         return 'Reminders for upcoming classes';
       case 'prayer_notifications':
         return 'Prayer time reminders';
-      case 'test_notifications':
-        return 'Test notifications for debugging';
+
       default:
         return 'Default notifications for the app';
     }
@@ -315,7 +305,7 @@ class LocalNotificationService {
     );
 
     await _notificationsPlugin.show(id, title, body, details, payload: payload);
-    debugPrint("$TAG 📱 Notification shown: $title");
+    debugPrint("$tag 📱 Notification shown: $title");
   }
 
   // Schedule a notification for a specific time
@@ -331,7 +321,7 @@ class LocalNotificationService {
 
     if (scheduledTime.isBefore(DateTime.now())) {
       debugPrint(
-        "$TAG ⚠️ Cannot schedule notification in the past: $scheduledTime",
+        "$tag ⚠️ Cannot schedule notification in the past: $scheduledTime",
       );
       return;
     }
@@ -379,17 +369,17 @@ class LocalNotificationService {
       );
 
       debugPrint(
-        "$TAG ⏰ Scheduled notification: $title at $scheduledTime (ID: $id)",
+        "$tag ⏰ Scheduled notification: $title at $scheduledTime (ID: $id)",
       );
     } catch (e) {
-      debugPrint("$TAG ❌ Error scheduling notification: $e");
+      debugPrint("$tag ❌ Error scheduling notification: $e");
     }
   }
 
   // Handle FCM notification received in foreground
   static Future<void> handleForegroundMessage(RemoteMessage message) async {
     debugPrint(
-      "$TAG 🔔 FCM Foreground Message: ${message.notification?.title}",
+      "$tag 🔔 FCM Foreground Message: ${message.notification?.title}",
     );
 
     if (message.notification != null) {
@@ -406,24 +396,22 @@ class LocalNotificationService {
   // Handle FCM notification received in background
   static Future<void> handleBackgroundMessage(RemoteMessage message) async {
     debugPrint(
-      "$TAG 🔔 FCM Background Message: ${message.notification?.title}",
+      "$tag 🔔 FCM Background Message: ${message.notification?.title}",
     );
 
     if (message.data.isNotEmpty) {
-      debugPrint("$TAG Background message data: ${message.data}");
+      debugPrint("$tag Background message data: ${message.data}");
 
       switch (message.data['type']) {
         case 'new_class':
-          debugPrint("$TAG New class notification received");
+          debugPrint("$tag New class notification received");
           break;
         case 'class_reminder':
-          debugPrint("$TAG Class reminder notification received");
+          debugPrint("$tag Class reminder notification received");
           break;
-        case 'test':
-          debugPrint("$TAG Test notification received");
-          break;
+
         default:
-          debugPrint("$TAG Unknown notification type: ${message.data['type']}");
+          debugPrint("$tag Unknown notification type: ${message.data['type']}");
       }
     }
   }
@@ -438,8 +426,7 @@ class LocalNotificationService {
           return 'reminder_notifications';
         case 'prayer_reminder':
           return 'prayer_notifications';
-        case 'test':
-          return 'test_notifications';
+
         default:
           return 'default_channel';
       }
@@ -450,13 +437,13 @@ class LocalNotificationService {
   // Cancel a specific notification
   static Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id);
-    debugPrint("$TAG ❌ Cancelled notification with ID: $id");
+    debugPrint("$tag ❌ Cancelled notification with ID: $id");
   }
 
   // Cancel all notifications
   static Future<void> cancelAllNotifications() async {
     await _notificationsPlugin.cancelAll();
-    debugPrint("$TAG ❌ Cancelled all notifications");
+    debugPrint("$tag ❌ Cancelled all notifications");
   }
 
   // Get pending notifications (for debugging)

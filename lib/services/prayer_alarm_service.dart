@@ -9,16 +9,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:adhan/adhan.dart';
-import 'package:intl/intl.dart';
+
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PrayerAlarmService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  static const String TAG = "PrayerAlarmService";
-  static const String PRAYER_CACHE_KEY = "cached_prayer_times";
-  static const String LOCATION_CACHE_KEY = "cached_location";
+  static const String tag = "PrayerAlarmService";
+  static const String prayerCacheKey = "cached_prayer_times";
+  static const String locationCacheKey = "cached_location";
   Position? _lastKnownLocation;
   String _locationName = "Unknown";
   List<PrayerTime>? _cachedPrayerTimes;
@@ -41,49 +41,49 @@ class PrayerAlarmService {
 
   // Check location permission
   Future<bool> checkLocationPermission() async {
-    debugPrint('$TAG 🔍 Checking location permissions...');
+    debugPrint('$tag 🔍 Checking location permissions...');
     bool serviceEnabled;
     LocationPermission permission;
 
     // Test if location services are enabled
     try {
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      debugPrint('$TAG Location services enabled: $serviceEnabled');
+      debugPrint('$tag Location services enabled: $serviceEnabled');
       if (!serviceEnabled) {
-        debugPrint('$TAG ❌ Location services are disabled');
+        debugPrint('$tag ❌ Location services are disabled');
         return false;
       }
     } catch (e) {
-      debugPrint('$TAG ❌ Error checking location services: $e');
+      debugPrint('$tag ❌ Error checking location services: $e');
       return false;
     }
 
     try {
       // Check current permission status
       permission = await Geolocator.checkPermission();
-      debugPrint('$TAG Current location permission status: $permission');
+      debugPrint('$tag Current location permission status: $permission');
 
       if (permission == LocationPermission.denied) {
-        debugPrint('$TAG Location permission denied, requesting permission...');
+        debugPrint('$tag Location permission denied, requesting permission...');
         permission = await Geolocator.requestPermission();
         debugPrint(
-          '$TAG After request, location permission status: $permission',
+          '$tag After request, location permission status: $permission',
         );
         if (permission == LocationPermission.denied) {
-          debugPrint('$TAG ❌ Location permissions are denied');
+          debugPrint('$tag ❌ Location permissions are denied');
           return false;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        debugPrint('$TAG ❌ Location permissions are permanently denied');
+        debugPrint('$tag ❌ Location permissions are permanently denied');
         return false;
       }
 
-      debugPrint('$TAG ✅ Location permission granted: $permission');
+      debugPrint('$tag ✅ Location permission granted: $permission');
       return true;
     } catch (e) {
-      debugPrint('$TAG ❌ Error during permission check: $e');
+      debugPrint('$tag ❌ Error during permission check: $e');
       return false;
     }
   }
@@ -92,7 +92,7 @@ class PrayerAlarmService {
   Future<Position?> _loadCachedLocation() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final locationJson = prefs.getString(LOCATION_CACHE_KEY);
+      final locationJson = prefs.getString(locationCacheKey);
 
       if (locationJson != null) {
         final locationMap = json.decode(locationJson);
@@ -120,7 +120,7 @@ class PrayerAlarmService {
         }
       }
     } catch (e) {
-      debugPrint('$TAG Error loading cached location: $e');
+      debugPrint('$tag Error loading cached location: $e');
     }
     return null;
   }
@@ -143,9 +143,9 @@ class PrayerAlarmService {
         'altitudeAccuracy': location.altitudeAccuracy,
         'headingAccuracy': location.headingAccuracy,
       };
-      await prefs.setString(LOCATION_CACHE_KEY, json.encode(locationMap));
+      await prefs.setString(locationCacheKey, json.encode(locationMap));
     } catch (e) {
-      debugPrint('$TAG Error caching location: $e');
+      debugPrint('$tag Error caching location: $e');
     }
   }
 
@@ -154,14 +154,14 @@ class PrayerAlarmService {
     final hasPermission = await checkLocationPermission();
     if (!hasPermission) {
       debugPrint(
-        '$TAG ❌ Location permission denied or location services disabled',
+        '$tag ❌ Location permission denied or location services disabled',
       );
       _locationName = "Location permission needed";
       return await _loadCachedLocation();
     }
 
     try {
-      debugPrint('$TAG 🔍 Attempting to get current location...');
+      debugPrint('$tag 🔍 Attempting to get current location...');
 
       // First try to get from cache if available
       final cachedLocation = await _loadCachedLocation();
@@ -173,7 +173,7 @@ class PrayerAlarmService {
       ).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          debugPrint('$TAG ⚠️ Location fetch timed out, using fallback');
+          debugPrint('$tag ⚠️ Location fetch timed out, using fallback');
           // Return cached or last known location on timeout
           return cachedLocation ??
               _lastKnownLocation ??
@@ -197,7 +197,7 @@ class PrayerAlarmService {
 
       if (_lastKnownLocation != null) {
         debugPrint(
-          '$TAG ✅ Location obtained: ${_lastKnownLocation?.latitude}, ${_lastKnownLocation?.longitude}',
+          '$tag ✅ Location obtained: ${_lastKnownLocation?.latitude}, ${_lastKnownLocation?.longitude}',
         );
 
         // Cache the new location
@@ -209,14 +209,14 @@ class PrayerAlarmService {
 
       return _lastKnownLocation;
     } catch (e) {
-      debugPrint('$TAG ❌ Error getting location: $e');
+      debugPrint('$tag ❌ Error getting location: $e');
 
       // Try cached location first
       final cachedLocation = await _loadCachedLocation();
       if (cachedLocation != null) {
         _lastKnownLocation = cachedLocation;
         debugPrint(
-          '$TAG ✅ Using cached location: ${_lastKnownLocation?.latitude}, ${_lastKnownLocation?.longitude}',
+          '$tag ✅ Using cached location: ${_lastKnownLocation?.latitude}, ${_lastKnownLocation?.longitude}',
         );
         _setUserFriendlyLocationName(_lastKnownLocation!);
         return _lastKnownLocation;
@@ -224,17 +224,17 @@ class PrayerAlarmService {
 
       // Then try getting last known location if no cache
       try {
-        debugPrint('$TAG 🔍 Trying to get last known location as fallback...');
+        debugPrint('$tag 🔍 Trying to get last known location as fallback...');
         _lastKnownLocation = await Geolocator.getLastKnownPosition();
         if (_lastKnownLocation != null) {
           debugPrint(
-            '$TAG ✅ Last known location retrieved: ${_lastKnownLocation?.latitude}, ${_lastKnownLocation?.longitude}',
+            '$tag ✅ Last known location retrieved: ${_lastKnownLocation?.latitude}, ${_lastKnownLocation?.longitude}',
           );
           _setUserFriendlyLocationName(_lastKnownLocation!, isLastKnown: true);
           return _lastKnownLocation;
         }
       } catch (lastKnownError) {
-        debugPrint('$TAG ❌ Error getting last known location: $lastKnownError');
+        debugPrint('$tag ❌ Error getting last known location: $lastKnownError');
       }
 
       // If we get here, we couldn't get a location
@@ -322,14 +322,14 @@ class PrayerAlarmService {
       if (now.day == _cacheTimestamp!.day &&
           now.month == _cacheTimestamp!.month &&
           now.year == _cacheTimestamp!.year) {
-        debugPrint('$TAG ✅ Using in-memory cached prayer times');
+        debugPrint('$tag ✅ Using in-memory cached prayer times');
         return _cachedPrayerTimes;
       }
     }
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final prayerTimesJson = prefs.getString(PRAYER_CACHE_KEY);
+      final prayerTimesJson = prefs.getString(prayerCacheKey);
 
       if (prayerTimesJson != null) {
         final prayerTimesMap = json.decode(prayerTimesJson);
@@ -357,12 +357,12 @@ class PrayerAlarmService {
 
           _cachedPrayerTimes = cachedPrayers;
           _cacheTimestamp = timestamp;
-          debugPrint('$TAG ✅ Using disk cached prayer times from today');
+          debugPrint('$tag ✅ Using disk cached prayer times from today');
           return cachedPrayers;
         }
       }
     } catch (e) {
-      debugPrint('$TAG Error loading cached prayer times: $e');
+      debugPrint('$tag Error loading cached prayer times: $e');
     }
     return null;
   }
@@ -392,16 +392,16 @@ class PrayerAlarmService {
         'prayers': prayersJson,
       };
 
-      await prefs.setString(PRAYER_CACHE_KEY, json.encode(prayerTimesMap));
-      debugPrint('$TAG ✅ Prayer times cached successfully');
+      await prefs.setString(prayerCacheKey, json.encode(prayerTimesMap));
+      debugPrint('$tag ✅ Prayer times cached successfully');
     } catch (e) {
-      debugPrint('$TAG Error caching prayer times: $e');
+      debugPrint('$tag Error caching prayer times: $e');
     }
   }
 
   // Get prayer times based on location
   Future<List<PrayerTime>> getPrayerTimesFromLocation() async {
-    debugPrint('$TAG 🔍 Getting prayer times from location...');
+    debugPrint('$tag 🔍 Getting prayer times from location...');
 
     try {
       // First try to load from cache to speed up the initial load
@@ -416,7 +416,7 @@ class PrayerAlarmService {
         location = await getCurrentLocation();
       } catch (e) {
         debugPrint(
-          '$TAG ⚠️ Error getting location, using default coordinates: $e',
+          '$tag ⚠️ Error getting location, using default coordinates: $e',
         );
       }
 
@@ -431,7 +431,7 @@ class PrayerAlarmService {
               : "Default location (Islamabad)";
 
       debugPrint(
-        '$TAG 🔄 Calculating prayer times for location: $latitude, $longitude',
+        '$tag 🔄 Calculating prayer times for location: $latitude, $longitude',
       );
 
       final date = DateComponents.from(DateTime.now());
@@ -448,7 +448,7 @@ class PrayerAlarmService {
       params.adjustments.isha = 2;
 
       debugPrint(
-        '$TAG Using calculation method: Muslim World League with Hanafi madhab',
+        '$tag Using calculation method: Muslim World League with Hanafi madhab',
       );
 
       final prayerTimes = PrayerTimes(
@@ -457,21 +457,21 @@ class PrayerAlarmService {
         params,
       );
 
-      debugPrint('$TAG ✅ Prayer times calculated successfully:');
+      debugPrint('$tag ✅ Prayer times calculated successfully:');
       debugPrint(
-        '$TAG   Fajr: ${prayerTimes.fajr.hour}:${prayerTimes.fajr.minute}',
+        '$tag   Fajr: ${prayerTimes.fajr.hour}:${prayerTimes.fajr.minute}',
       );
       debugPrint(
-        '$TAG   Dhuhr: ${prayerTimes.dhuhr.hour}:${prayerTimes.dhuhr.minute}',
+        '$tag   Dhuhr: ${prayerTimes.dhuhr.hour}:${prayerTimes.dhuhr.minute}',
       );
       debugPrint(
-        '$TAG   Asr: ${prayerTimes.asr.hour}:${prayerTimes.asr.minute}',
+        '$tag   Asr: ${prayerTimes.asr.hour}:${prayerTimes.asr.minute}',
       );
       debugPrint(
-        '$TAG   Maghrib: ${prayerTimes.maghrib.hour}:${prayerTimes.maghrib.minute}',
+        '$tag   Maghrib: ${prayerTimes.maghrib.hour}:${prayerTimes.maghrib.minute}',
       );
       debugPrint(
-        '$TAG   Isha: ${prayerTimes.isha.hour}:${prayerTimes.isha.minute}',
+        '$tag   Isha: ${prayerTimes.isha.hour}:${prayerTimes.isha.minute}',
       );
 
       // Create prayer times from the adhan package
@@ -508,7 +508,7 @@ class PrayerAlarmService {
 
       return calculatedTimes;
     } catch (e) {
-      debugPrint('$TAG ❌ Error calculating prayer times: $e');
+      debugPrint('$tag ❌ Error calculating prayer times: $e');
       return _getDefaultPrayerTimes();
     }
   }
@@ -518,7 +518,7 @@ class PrayerAlarmService {
     List<PrayerTime> prayerTimes,
   ) async {
     if (_userId == null) {
-      debugPrint('$TAG ❌ Cannot save prayer times: No user logged in');
+      debugPrint('$tag ❌ Cannot save prayer times: No user logged in');
       // Still schedule notifications even if not logged in
       for (var prayerTime in prayerTimes) {
         await _schedulePrayerTimeNotification(prayerTime);
@@ -533,13 +533,13 @@ class PrayerAlarmService {
     while (!success && retryCount < maxRetries) {
       try {
         debugPrint(
-          '$TAG 🔄 Saving location-based prayer times to Firestore...',
+          '$tag 🔄 Saving location-based prayer times to Firestore...',
         );
 
         // Check if we can access Firestore first
         if (!await _canAccessFirestore()) {
           debugPrint(
-            '$TAG ❌ Cannot access Firestore. Using local storage only.',
+            '$tag ❌ Cannot access Firestore. Using local storage only.',
           );
           // Cache the prayer times locally instead
           _cachePrayerTimes(prayerTimes);
@@ -565,18 +565,18 @@ class PrayerAlarmService {
           await _schedulePrayerTimeNotification(prayerTime);
         }
 
-        debugPrint('$TAG ✅ Saved location-based prayer times to Firestore');
+        debugPrint('$tag ✅ Saved location-based prayer times to Firestore');
         success = true;
       } catch (e) {
         retryCount++;
         debugPrint(
-          '$TAG ❌ Error saving prayer times to Firestore (attempt $retryCount): $e',
+          '$tag ❌ Error saving prayer times to Firestore (attempt $retryCount): $e',
         );
 
         if (retryCount < maxRetries) {
           // Wait before retrying (exponential backoff)
           final waitTime = Duration(seconds: 1 * retryCount);
-          debugPrint('$TAG 🔄 Retrying in ${waitTime.inSeconds} seconds...');
+          debugPrint('$tag 🔄 Retrying in ${waitTime.inSeconds} seconds...');
           await Future.delayed(waitTime);
         }
       }
@@ -585,7 +585,7 @@ class PrayerAlarmService {
     // Schedule notifications even if Firestore fails
     if (!success) {
       debugPrint(
-        '$TAG ⚠️ Failed to save to Firestore after $maxRetries attempts. Scheduling local notifications only.',
+        '$tag ⚠️ Failed to save to Firestore after $maxRetries attempts. Scheduling local notifications only.',
       );
       for (var prayerTime in prayerTimes) {
         await _schedulePrayerTimeNotification(prayerTime);
@@ -600,14 +600,14 @@ class PrayerAlarmService {
       await _firestore.collection('public_prayer_times').limit(1).get();
       return true;
     } catch (e) {
-      debugPrint('$TAG ❌ Firestore access check failed: $e');
+      debugPrint('$tag ❌ Firestore access check failed: $e');
       return false;
     }
   }
 
   // Get all prayer times for the current user
   Future<List<PrayerTime>> getPrayerTimes() async {
-    debugPrint('$TAG 🔍 Starting prayer times fetch process');
+    debugPrint('$tag 🔍 Starting prayer times fetch process');
 
     try {
       // First check for cached prayer times to speed up loading
@@ -623,13 +623,13 @@ class PrayerAlarmService {
       }
 
       // No cache available, try to get location-based prayer times
-      debugPrint('$TAG 🔄 Getting location-based prayer times...');
+      debugPrint('$tag 🔄 Getting location-based prayer times...');
       final locationPrayerTimes = await getPrayerTimesFromLocation();
 
       // Try to access Firebase only if user is logged in
       if (_userId == null) {
         debugPrint(
-          '$TAG ℹ️ No user logged in, using location-based times only',
+          '$tag ℹ️ No user logged in, using location-based times only',
         );
         return locationPrayerTimes;
       }
@@ -637,7 +637,7 @@ class PrayerAlarmService {
       // Check if we can access Firestore first
       if (!await _canAccessFirestore()) {
         debugPrint(
-          '$TAG ❌ Cannot access Firestore. Using location-based times only.',
+          '$tag ❌ Cannot access Firestore. Using location-based times only.',
         );
         return locationPrayerTimes;
       }
@@ -645,20 +645,20 @@ class PrayerAlarmService {
       // Now try to access the database
       try {
         debugPrint(
-          '$TAG 🔄 Trying to fetch prayer times from database for user: $_userId',
+          '$tag 🔄 Trying to fetch prayer times from database for user: $_userId',
         );
         final QuerySnapshot snapshot = await _prayerTimesRef.get();
 
         if (snapshot.docs.isEmpty) {
           // If user has no prayer times set up yet, save the location-based ones
           debugPrint(
-            '$TAG ℹ️ No prayer times found in database, saving location-based times',
+            '$tag ℹ️ No prayer times found in database, saving location-based times',
           );
           try {
             await saveLocationBasedPrayerTimes(locationPrayerTimes);
           } catch (saveError) {
             debugPrint(
-              '$TAG ❌ Failed to save location-based prayer times: $saveError',
+              '$tag ❌ Failed to save location-based prayer times: $saveError',
             );
             // Continue with location-based times even if we can't save them
           }
@@ -666,7 +666,7 @@ class PrayerAlarmService {
         } else {
           // If database has prayer times, return those
           debugPrint(
-            '$TAG ✅ Found ${snapshot.docs.length} prayer times in database',
+            '$tag ✅ Found ${snapshot.docs.length} prayer times in database',
           );
           final databaseTimes =
               snapshot.docs
@@ -683,7 +683,7 @@ class PrayerAlarmService {
 
           // Schedule notifications for the database times
           debugPrint(
-            '$TAG 🔄 Scheduling notifications for database prayer times',
+            '$tag 🔄 Scheduling notifications for database prayer times',
           );
           for (var prayer in databaseTimes) {
             if (prayer.isEnabled) {
@@ -695,14 +695,14 @@ class PrayerAlarmService {
         }
       } catch (dbError) {
         // If database access fails, just use the location-based times
-        debugPrint('$TAG ❌ Firebase error: $dbError');
+        debugPrint('$tag ❌ Firebase error: $dbError');
         debugPrint(
-          '$TAG ℹ️ Falling back to location-based prayer times due to database error',
+          '$tag ℹ️ Falling back to location-based prayer times due to database error',
         );
 
         // Schedule notifications for the location-based times
         debugPrint(
-          '$TAG 🔄 Scheduling notifications for location-based prayer times',
+          '$tag 🔄 Scheduling notifications for location-based prayer times',
         );
         for (var prayer in locationPrayerTimes) {
           if (prayer.isEnabled) {
@@ -713,12 +713,12 @@ class PrayerAlarmService {
         return locationPrayerTimes;
       }
     } catch (e) {
-      debugPrint('$TAG ❌ Error getting prayer times: $e');
+      debugPrint('$tag ❌ Error getting prayer times: $e');
       // In case of permission errors or any other issues, use default prayer times
       final defaultTimes = _getDefaultPrayerTimes();
 
       // Schedule notifications for default times
-      debugPrint('$TAG 🔄 Scheduling notifications for default prayer times');
+      debugPrint('$tag 🔄 Scheduling notifications for default prayer times');
       for (var prayer in defaultTimes) {
         if (prayer.isEnabled) {
           await _schedulePrayerTimeNotification(prayer);
@@ -731,20 +731,20 @@ class PrayerAlarmService {
 
   // Schedule all prayer time notifications
   Future<void> scheduleAllPrayerTimeNotifications() async {
-    debugPrint('$TAG 🔄 Scheduling all prayer time notifications');
+    debugPrint('$tag 🔄 Scheduling all prayer time notifications');
     final prayerTimes = await getPrayerTimes();
     for (var prayer in prayerTimes) {
       if (prayer.isEnabled) {
         await _schedulePrayerTimeNotification(prayer);
       }
     }
-    debugPrint('$TAG ✅ All prayer time notifications scheduled');
+    debugPrint('$tag ✅ All prayer time notifications scheduled');
   }
 
   // Create a new prayer time
   Future<void> createPrayerTime(PrayerTime prayerTime) async {
     if (_userId == null) {
-      debugPrint('$TAG Cannot create prayer time: No user logged in');
+      debugPrint('$tag Cannot create prayer time: No user logged in');
       return;
     }
 
@@ -752,7 +752,7 @@ class PrayerAlarmService {
       await _prayerTimesRef.add(prayerTime.toMap());
       await _schedulePrayerTimeNotification(prayerTime);
     } catch (e) {
-      debugPrint('$TAG Error creating prayer time: $e');
+      debugPrint('$tag Error creating prayer time: $e');
       // Still schedule notification even if Firestore fails
       await _schedulePrayerTimeNotification(prayerTime);
     }
@@ -761,7 +761,7 @@ class PrayerAlarmService {
   // Update an existing prayer time
   Future<void> updatePrayerTime(PrayerTime prayerTime) async {
     if (_userId == null) {
-      debugPrint('$TAG Cannot update prayer time: No user logged in');
+      debugPrint('$tag Cannot update prayer time: No user logged in');
       return;
     }
 
@@ -769,7 +769,7 @@ class PrayerAlarmService {
       await _prayerTimesRef.doc(prayerTime.id).update(prayerTime.toMap());
       await _schedulePrayerTimeNotification(prayerTime);
     } catch (e) {
-      debugPrint('$TAG Error updating prayer time: $e');
+      debugPrint('$tag Error updating prayer time: $e');
       // Still schedule notification even if Firestore fails
       await _schedulePrayerTimeNotification(prayerTime);
     }
@@ -782,7 +782,7 @@ class PrayerAlarmService {
     try {
       await _prayerTimesRef.doc(prayerTimeId).delete();
     } catch (e) {
-      debugPrint('$TAG Error deleting prayer time: $e');
+      debugPrint('$tag Error deleting prayer time: $e');
     }
   }
 
@@ -831,7 +831,7 @@ class PrayerAlarmService {
   Future<void> _schedulePrayerTimeNotification(PrayerTime prayerTime) async {
     if (!prayerTime.isEnabled) {
       debugPrint(
-        '$TAG Prayer notification for ${prayerTime.name} is disabled, skipping',
+        '$tag Prayer notification for ${prayerTime.name} is disabled, skipping',
       );
       return;
     }
@@ -846,7 +846,7 @@ class PrayerAlarmService {
         final hasPermission = await _checkNotificationPermissions();
         if (!hasPermission) {
           debugPrint(
-            '$TAG Cannot schedule notification: No notification permission',
+            '$tag Cannot schedule notification: No notification permission',
           );
           return;
         }
@@ -860,7 +860,7 @@ class PrayerAlarmService {
         try {
           await _ensureBackgroundNotifications();
         } catch (e) {
-          debugPrint('$TAG Warning - background notification setup failed: $e');
+          debugPrint('$tag Warning - background notification setup failed: $e');
           // Continue anyway
         }
 
@@ -894,20 +894,20 @@ class PrayerAlarmService {
           );
 
           debugPrint(
-            '$TAG Scheduled prayer notification for ${prayerTime.name} at ${finalDate.toString()}, ID: $notificationId',
+            '$tag Scheduled prayer notification for ${prayerTime.name} at ${finalDate.toString()}, ID: $notificationId',
           );
           success = true;
         } catch (e) {
           retryCount++;
           debugPrint(
-            '$TAG Error during notification scheduling (attempt $retryCount): $e',
+            '$tag Error during notification scheduling (attempt $retryCount): $e',
           );
 
           if (retryCount < maxRetries) {
             // Wait before retrying
             final waitTime = Duration(milliseconds: 500 * retryCount);
             debugPrint(
-              '$TAG Retrying notification scheduling in ${waitTime.inMilliseconds}ms...',
+              '$tag Retrying notification scheduling in ${waitTime.inMilliseconds}ms...',
             );
             await Future.delayed(waitTime);
           } else {
@@ -920,19 +920,19 @@ class PrayerAlarmService {
                     "Prayer time notifications have been set up for ${prayerTime.name}",
               );
               debugPrint(
-                '$TAG Sent fallback immediate notification for ${prayerTime.name}',
+                '$tag Sent fallback immediate notification for ${prayerTime.name}',
               );
               success =
                   true; // Consider this a success since we showed a fallback
             } catch (innerE) {
-              debugPrint('$TAG Failed to show fallback notification: $innerE');
+              debugPrint('$tag Failed to show fallback notification: $innerE');
             }
           }
         }
       } catch (e) {
         retryCount++;
         debugPrint(
-          '$TAG Fatal error scheduling prayer notification (attempt $retryCount): $e',
+          '$tag Fatal error scheduling prayer notification (attempt $retryCount): $e',
         );
 
         if (retryCount < maxRetries) {
@@ -944,7 +944,7 @@ class PrayerAlarmService {
 
     if (!success) {
       debugPrint(
-        '$TAG ❌ Failed to schedule notification for ${prayerTime.name} after $maxRetries attempts',
+        '$tag ❌ Failed to schedule notification for ${prayerTime.name} after $maxRetries attempts',
       );
     }
   }
@@ -963,9 +963,9 @@ class PrayerAlarmService {
         // For Android, we need to request battery optimization exemption
         // and background notification permissions
         final status = await Permission.ignoreBatteryOptimizations.request();
-        debugPrint('$TAG Battery optimization permission status: $status');
+        debugPrint('$tag Battery optimization permission status: $status');
       } catch (e) {
-        debugPrint('$TAG Error requesting battery optimization permission: $e');
+        debugPrint('$tag Error requesting battery optimization permission: $e');
         // Continue anyway as this is not critical
       }
     }

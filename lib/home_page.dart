@@ -13,11 +13,11 @@ import 'package:muslim_kids/widgets/islamic_header.dart';
 import 'package:muslim_kids/widgets/loading_skeleton.dart';
 import 'package:muslim_kids/services/user_data_service.dart';
 import 'package:muslim_kids/mixins/safe_state_mixin.dart';
-import 'package:muslim_kids/quiz_debug_screen.dart';
-import 'package:muslim_kids/add_multiple_quizzes.dart';
+
+import 'package:muslim_kids/widgets/navigation_helper.dart';
 import 'teacher_home_page.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:math';
@@ -144,7 +144,6 @@ class _KidHomePageContentState extends State<KidHomePageContent>
   final UserDataService _userDataService = UserDataService();
   UserData? _userData;
   bool _isLoading = true;
-  String? _errorMessage;
   late StreamSubscription<UserData?> _userDataSubscription;
   late StreamSubscription<bool> _loadingSubscription;
   late StreamSubscription<String?> _errorSubscription;
@@ -166,6 +165,11 @@ class _KidHomePageContentState extends State<KidHomePageContent>
     }
 
     _initializeUserDataService();
+
+    // Show tutorial for first-time users
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NavigationHelper.showAppTutorial(context);
+    });
   }
 
   /// Initialize user data service and set up listeners
@@ -186,10 +190,6 @@ class _KidHomePageContentState extends State<KidHomePageContent>
 
     // Listen to error state changes
     _errorSubscription = _userDataService.errorStream.listen((error) {
-      safeSetState(() {
-        _errorMessage = error;
-      });
-
       if (error != null) {
         showErrorMessage(error);
       }
@@ -244,37 +244,37 @@ class _KidHomePageContentState extends State<KidHomePageContent>
     {
       'title': 'Prayer Alarm',
       'image': 'assets/prayer_time.jpg',
-      'color': Colors.deepOrangeAccent,
+      'color': Colors.deepOrangeAccent, // Back to fun orange
       'page': const PrayerAlarmPage(),
     },
     {
       'title': 'Quizzes',
       'image': 'assets/quizzes.jpg',
-      'color': Colors.orange,
+      'color': Colors.orange, // Back to bright orange
       'page': const QuizzesPage(),
     },
     {
       'title': 'Videos',
       'image': 'assets/videos.jpg',
-      'color': Colors.deepPurpleAccent,
+      'color': Colors.deepPurpleAccent, // Back to fun purple
       'page': const VideosPage(),
     },
     {
       'title': 'Live Classes',
       'image': 'assets/live_classes.jpg',
-      'color': Colors.blue,
+      'color': Colors.blue, // Back to bright blue
       'page': const LiveClassesPage(),
     },
     {
       'title': 'Islamic Calendar',
       'image': 'assets/islamic_calendar.jpg',
-      'color': Colors.green,
+      'color': Colors.green, // Back to bright green
       'page': const IslamicCalendarPage(),
     },
     {
       'title': 'Prayer Tracker',
       'image': 'assets/prayer_tracker.jpg',
-      'color': Colors.pink,
+      'color': Colors.pink, // Back to bright pink
       'page': const PrayerTrackerPage(),
     },
 
@@ -284,7 +284,12 @@ class _KidHomePageContentState extends State<KidHomePageContent>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 244, 143),
+      backgroundColor: const Color.fromARGB(
+        255,
+        255,
+        244,
+        143,
+      ), // Back to fun yellow
       extendBody: true,
       appBar: IslamicHeader(
         avatarPath: _userData?.avatar,
@@ -293,169 +298,225 @@ class _KidHomePageContentState extends State<KidHomePageContent>
         onLogoutPressed: _logout,
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color.fromARGB(255, 255, 244, 143),
-              const Color.fromARGB(255, 255, 230, 100),
+              Color.fromARGB(255, 255, 244, 143), // Fun yellow
+              Color.fromARGB(255, 255, 230, 100), // Bright yellow
             ],
           ),
         ),
         child: SafeArea(
           child: Stack(
             children: [
-              // Background decorative elements
+              // Fun colorful background decorative elements
               Positioned(
-                top: -30,
-                right: -30,
+                top: -50,
+                right: -50,
                 child: Container(
-                  height: 100,
-                  width: 100,
+                  height: 120,
+                  width: 120,
                   decoration: BoxDecoration(
-                    color: Colors.orange.withAlpha(50),
+                    color: Colors.orange.withAlpha(60), // Fun orange
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
               Positioned(
-                bottom: 20,
-                left: -20,
+                bottom: 100,
+                left: -40,
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withAlpha(50), // Fun green
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 200,
+                left: -30,
                 child: Container(
                   height: 80,
                   width: 80,
                   decoration: BoxDecoration(
-                    color: Colors.green.withAlpha(40),
+                    color: Colors.pink.withAlpha(40), // Fun pink
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
               // Main content
               Padding(
-                padding: const EdgeInsets.all(10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 10.0,
+                ),
                 child: Column(
                   children: [
+                    // Welcome banner with fun colors
                     Container(
-                      margin: const EdgeInsets.only(bottom: 15),
+                      margin: const EdgeInsets.only(bottom: 20),
                       padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 15,
+                        vertical: 16,
+                        horizontal: 20,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(100),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withAlpha(180),
+                            Colors.yellow.shade50.withAlpha(150),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withAlpha(20),
-                            blurRadius: 5,
-                            spreadRadius: 1,
+                            color: Colors.orange.withAlpha(60),
+                            blurRadius: 15,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 5),
                           ),
                         ],
+                        border: Border.all(
+                          color: Colors.orange.withAlpha(100),
+                          width: 2,
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.auto_awesome,
-                            color: Colors.amber,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                                "Welcome to Muslim Kids!",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.purple.shade700,
-                                  letterSpacing: 0.5,
-                                ),
-                              )
-                              .animate()
-                              .fadeIn(
-                                duration: const Duration(milliseconds: 600),
-                              )
-                              .shimmer(
-                                delay: const Duration(milliseconds: 1200),
-                                duration: const Duration(milliseconds: 1800),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.orange, Colors.deepOrange],
                               ),
-                          const SizedBox(width: 10),
-                          const Icon(
-                            Icons.auto_awesome,
-                            color: Colors.amber,
-                            size: 24,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.withAlpha(100),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                                  "Welcome to Muslim Kids!",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.purple.shade700,
+                                    letterSpacing: 0.3,
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(
+                                  duration: const Duration(milliseconds: 600),
+                                )
+                                .shimmer(
+                                  delay: const Duration(milliseconds: 1200),
+                                  duration: const Duration(milliseconds: 1800),
+                                ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.orange, Colors.deepOrange],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.withAlpha(100),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(
-                      height: 250,
-                      child: CarouselSlider(
-                        options: CarouselOptions(
-                          height: 250.0,
-                          autoPlay: true,
-                          enlargeCenterPage: true,
-                          viewportFraction: 0.9,
-                          autoPlayAnimationDuration: const Duration(
-                            milliseconds: 800,
+                    // Carousel with fun styling
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      child: SizedBox(
+                        height: 240,
+                        child: CarouselSlider(
+                          options: CarouselOptions(
+                            height: 240.0,
+                            autoPlay: true,
+                            enlargeCenterPage: true,
+                            viewportFraction: 0.85,
+                            autoPlayAnimationDuration: const Duration(
+                              milliseconds: 800,
+                            ),
+                            autoPlayCurve: Curves.easeInOut,
+                            pauseAutoPlayOnTouch: true,
                           ),
-                          autoPlayCurve: Curves.easeInOut,
-                          pauseAutoPlayOnTouch: true,
-                        ),
-                        items:
-                            carouselImages.map((image) {
-                              return Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 5.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(15.0),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlpha(50),
-                                      blurRadius: 5.0,
-                                      spreadRadius: 1.0,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(15.0),
-                                  child: Image.asset(
-                                    image,
-                                    fit:
-                                        BoxFit
-                                            .contain, // Changed to contain to show full image
-                                    width: double.infinity,
-                                    height: 250.0,
-                                    cacheWidth: 800,
+                          items:
+                              carouselImages.map((image) {
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
                                   ),
-                                ),
-                              );
-                            }).toList(),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.purple.withAlpha(80),
+                                        blurRadius: 15.0,
+                                        spreadRadius: 0,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                    child: Image.asset(
+                                      image,
+                                      fit: BoxFit.contain,
+                                      width: double.infinity,
+                                      height: 240.0,
+                                      cacheWidth: 800,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 15),
+                    // Improved grid with bright colors
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
                         child:
                             _isLoading && _userData == null
                                 ? GridView.builder(
                                   gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount:
-                                            MediaQuery.of(context).size.width <
-                                                    360
-                                                ? 2
-                                                : 3,
-                                        crossAxisSpacing: 15,
-                                        mainAxisSpacing: 15,
-                                        childAspectRatio:
-                                            MediaQuery.of(context).size.width <
-                                                    360
-                                                ? 0.9
-                                                : 0.8,
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 16,
+                                        mainAxisSpacing: 16,
+                                        childAspectRatio: 1.1,
                                       ),
                                   itemCount: 6,
                                   itemBuilder: (context, index) {
@@ -464,19 +525,11 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                 )
                                 : GridView.builder(
                                   gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount:
-                                            MediaQuery.of(context).size.width <
-                                                    360
-                                                ? 2
-                                                : 3,
-                                        crossAxisSpacing: 15,
-                                        mainAxisSpacing: 15,
-                                        childAspectRatio:
-                                            MediaQuery.of(context).size.width <
-                                                    360
-                                                ? 0.9
-                                                : 0.8,
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 16,
+                                        mainAxisSpacing: 16,
+                                        childAspectRatio: 1.1,
                                       ),
                                   itemCount: tiles.length,
                                   itemBuilder: (context, index) {
@@ -497,7 +550,7 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                                 colors: [
                                                   (tiles[index]['color']
                                                           as Color)
-                                                      .withAlpha(180),
+                                                      .withAlpha(220),
                                                   tiles[index]['color']
                                                       as Color,
                                                 ],
@@ -505,89 +558,85 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                                 end: Alignment.bottomRight,
                                               ),
                                               borderRadius:
-                                                  BorderRadius.circular(25),
+                                                  BorderRadius.circular(20),
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: (tiles[index]['color']
                                                           as Color)
-                                                      .withAlpha(100),
-                                                  blurRadius: 8,
-                                                  spreadRadius: 1,
-                                                  offset: const Offset(2, 4),
+                                                      .withAlpha(120),
+                                                  blurRadius: 15,
+                                                  spreadRadius: 0,
+                                                  offset: const Offset(0, 8),
                                                 ),
                                               ],
                                               border: Border.all(
                                                 color: Colors.white.withAlpha(
-                                                  50,
+                                                  100,
                                                 ),
-                                                width: 1.5,
+                                                width: 2,
                                               ),
                                             ),
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets.all(
-                                                    10,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white
-                                                        .withAlpha(50),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: Image.asset(
-                                                    tiles[index]['image'],
-                                                    height: 50,
-                                                    width: 50,
-                                                    fit: BoxFit.contain,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Text(
-                                                  tiles[index]['title'],
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.white,
-                                                    fontSize: 15,
-                                                    letterSpacing: 0.5,
-                                                    height: 1.2,
-                                                    shadows: [
-                                                      Shadow(
-                                                        offset: Offset(0, 1),
-                                                        blurRadius: 3,
-                                                        color: Color.fromARGB(
-                                                          200,
-                                                          0,
-                                                          0,
-                                                          0,
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(18),
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Container(
+                                                    width: 60,
+                                                    height: 60,
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          12,
                                                         ),
-                                                      ),
-                                                      Shadow(
-                                                        offset: Offset(1, 0),
-                                                        blurRadius: 2,
-                                                        color: Color.fromARGB(
-                                                          150,
-                                                          0,
-                                                          0,
-                                                          0,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white
+                                                          .withAlpha(200),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            16,
+                                                          ),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.white
+                                                              .withAlpha(150),
+                                                          blurRadius: 8,
+                                                          spreadRadius: 1,
                                                         ),
-                                                      ),
-                                                      Shadow(
-                                                        offset: Offset(-1, 0),
-                                                        blurRadius: 2,
-                                                        color: Color.fromARGB(
-                                                          100,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                      ],
+                                                    ),
+                                                    child: Image.asset(
+                                                      tiles[index]['image'],
+                                                      fit: BoxFit.contain,
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(height: 16),
+                                                  Text(
+                                                    tiles[index]['title'],
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                      letterSpacing: 0.3,
+                                                      height: 1.3,
+                                                      shadows: [
+                                                        Shadow(
+                                                          offset: Offset(0, 2),
+                                                          blurRadius: 4,
+                                                          color: Color.fromARGB(
+                                                            180,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           )
                                           .animate()
@@ -619,7 +668,7 @@ class _KidHomePageContentState extends State<KidHomePageContent>
   }
 }
 
-// Improved bottom navigation with state preservation
+// Colorful bottom navigation that kids love
 class ImprovedBottomNavigation extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemTapped;
@@ -640,36 +689,45 @@ class ImprovedBottomNavigation extends StatelessWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 0),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
             Colors.purple.shade300,
             Colors.pink.shade200,
-            Colors.purple.shade100,
+            Colors.purple.shade200,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.pink.shade200.withAlpha(128),
-            spreadRadius: 2,
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.purple.withAlpha(100),
+            spreadRadius: 0,
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: Colors.white.withAlpha(100), width: 2),
       ),
       child: BottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: onItemTapped,
         backgroundColor: Colors.transparent,
         selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
+        unselectedItemColor: Colors.white.withAlpha(180),
         elevation: 0,
         type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+        ),
         items:
             items.asMap().entries.map((entry) {
               final index = entry.key;
@@ -688,19 +746,25 @@ class ImprovedBottomNavigation extends StatelessWidget {
           decoration:
               selectedIndex == index
                   ? BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.white.withAlpha(80),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withAlpha(100),
+                        blurRadius: 8,
+                      ),
+                    ],
                   )
                   : null,
-          padding: const EdgeInsets.all(6),
-          child: Icon(icon),
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, color: Colors.white, size: 22),
         )
         .animate(target: selectedIndex == index ? 1 : 0)
         .scale(
           begin: const Offset(1.0, 1.0),
           end: const Offset(1.1, 1.1),
           curve: Curves.easeInOut,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 200),
         );
   }
 }

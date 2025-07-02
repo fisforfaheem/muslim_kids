@@ -13,27 +13,30 @@ class UserDataService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   // Cache keys
   static const String _userDataCacheKey = 'cached_user_data';
   static const String _lastUpdateKey = 'last_user_data_update';
   static const Duration _cacheValidDuration = Duration(hours: 24);
-  
+
   // Stream controllers for reactive updates
-  final StreamController<UserData?> _userDataController = StreamController<UserData?>.broadcast();
-  final StreamController<bool> _loadingController = StreamController<bool>.broadcast();
-  final StreamController<String?> _errorController = StreamController<String?>.broadcast();
-  
+  final StreamController<UserData?> _userDataController =
+      StreamController<UserData?>.broadcast();
+  final StreamController<bool> _loadingController =
+      StreamController<bool>.broadcast();
+  final StreamController<String?> _errorController =
+      StreamController<String?>.broadcast();
+
   // Getters for streams
   Stream<UserData?> get userDataStream => _userDataController.stream;
   Stream<bool> get loadingStream => _loadingController.stream;
   Stream<String?> get errorStream => _errorController.stream;
-  
+
   // Current state
   UserData? _currentUserData;
   bool _isLoading = false;
   String? _lastError;
-  
+
   // Retry configuration
   static const int _maxRetries = 3;
   static const Duration _baseRetryDelay = Duration(seconds: 2);
@@ -50,9 +53,9 @@ class UserDataService {
 
   /// Load user data with comprehensive error handling and caching
   Future<UserData?> _loadUserData({
-    bool useCache = true, 
+    bool useCache = true,
     bool forceRefresh = false,
-    int retryCount = 0
+    int retryCount = 0,
   }) async {
     try {
       _setLoading(true);
@@ -77,7 +80,7 @@ class UserDataService {
 
       // Fetch from Firestore with timeout and retry logic
       final userDoc = await _fetchUserDocumentWithTimeout(currentUser.uid);
-      
+
       UserData userData;
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
@@ -91,23 +94,22 @@ class UserDataService {
       // Cache the data
       await _cacheUserData(userData);
       _setUserData(userData);
-      
+
       return userData;
-      
     } catch (e) {
       debugPrint('Error loading user data (attempt ${retryCount + 1}): $e');
-      
+
       // Implement exponential backoff retry
       if (retryCount < _maxRetries) {
         final delay = _baseRetryDelay * (retryCount + 1);
         await Future.delayed(delay);
         return _loadUserData(
-          useCache: false, 
+          useCache: false,
           forceRefresh: forceRefresh,
-          retryCount: retryCount + 1
+          retryCount: retryCount + 1,
         );
       }
-      
+
       // If all retries failed, try to use cached data as fallback
       final cachedData = await _getCachedUserData();
       if (cachedData != null) {
@@ -115,7 +117,7 @@ class UserDataService {
         _setError('Using cached data - network unavailable');
         return cachedData;
       }
-      
+
       _setError('Failed to load user data: ${e.toString()}');
       return null;
     } finally {
@@ -137,7 +139,10 @@ class UserDataService {
   /// Create user document in Firestore
   Future<void> _createUserDocument(UserData userData) async {
     try {
-      await _firestore.collection('users').doc(userData.uid).set(userData.toFirestore());
+      await _firestore
+          .collection('users')
+          .doc(userData.uid)
+          .set(userData.toFirestore());
       debugPrint('Created new user document for ${userData.uid}');
     } catch (e) {
       debugPrint('Error creating user document: $e');
@@ -161,17 +166,16 @@ class UserDataService {
         throw Exception('No authenticated user');
       }
 
-      // Store original data for rollback
-      final originalData = _currentUserData;
-      
       // Create updated data
-      final updatedData = _currentUserData?.copyWith(
-        name: name,
-        avatar: avatar,
-        email: email,
-        lastUpdated: DateTime.now(),
-        additionalData: additionalData,
-      ) ?? UserData.createDefault(currentUser);
+      final updatedData =
+          _currentUserData?.copyWith(
+            name: name,
+            avatar: avatar,
+            email: email,
+            lastUpdated: DateTime.now(),
+            additionalData: additionalData,
+          ) ??
+          UserData.createDefault(currentUser);
 
       // Optimistic update
       _setUserData(updatedData);
@@ -180,28 +184,30 @@ class UserDataService {
       final updateMap = <String, dynamic>{
         'lastUpdated': FieldValue.serverTimestamp(),
       };
-      
+
       if (name != null) updateMap['name'] = name;
       if (avatar != null) updateMap['avatar'] = avatar;
       if (email != null) updateMap['email'] = email;
       if (additionalData != null) updateMap.addAll(additionalData);
 
       // Update Firestore
-      await _firestore.collection('users').doc(currentUser.uid).update(updateMap);
-      
+      await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .update(updateMap);
+
       // Update cache
       await _cacheUserData(updatedData);
-      
+
       return true;
-      
     } catch (e) {
       debugPrint('Error updating user data: $e');
-      
-      // Rollback optimistic update
+
+      // Reset to previous state if needed
       if (_currentUserData != null) {
         _setUserData(_currentUserData);
       }
-      
+
       _setError('Failed to update profile: ${e.toString()}');
       return false;
     } finally {
@@ -220,23 +226,22 @@ class UserDataService {
       final prefs = await SharedPreferences.getInstance();
       final cachedJson = prefs.getString(_userDataCacheKey);
       final lastUpdateString = prefs.getString(_lastUpdateKey);
-      
+
       if (cachedJson == null || lastUpdateString == null) {
         return null;
       }
-      
+
       final lastUpdate = DateTime.parse(lastUpdateString);
       final now = DateTime.now();
-      
+
       // Check if cache is still valid
       if (now.difference(lastUpdate) > _cacheValidDuration) {
         debugPrint('User data cache expired');
         return null;
       }
-      
+
       final cachedData = json.decode(cachedJson) as Map<String, dynamic>;
       return UserData.fromJson(cachedData);
-      
     } catch (e) {
       debugPrint('Error reading cached user data: $e');
       return null;
@@ -333,11 +338,19 @@ class UserData {
       email: data['email'] ?? user.email ?? '',
       avatar: data['avatar'] ?? 'assets/avatar2.jpg',
       userType: data['userType'] ?? 'Kid',
-      lastUpdated: data['lastUpdated'] != null 
-          ? (data['lastUpdated'] as Timestamp).toDate()
-          : null,
-      additionalData: Map<String, dynamic>.from(data)
-        ..removeWhere((key, value) => ['name', 'email', 'avatar', 'userType', 'lastUpdated'].contains(key)),
+      lastUpdated:
+          data['lastUpdated'] != null
+              ? (data['lastUpdated'] as Timestamp).toDate()
+              : null,
+      additionalData: Map<String, dynamic>.from(data)..removeWhere(
+        (key, value) => [
+          'name',
+          'email',
+          'avatar',
+          'userType',
+          'lastUpdated',
+        ].contains(key),
+      ),
     );
   }
 
@@ -349,9 +362,10 @@ class UserData {
       email: json['email'],
       avatar: json['avatar'],
       userType: json['userType'],
-      lastUpdated: json['lastUpdated'] != null 
-          ? DateTime.parse(json['lastUpdated'])
-          : null,
+      lastUpdated:
+          json['lastUpdated'] != null
+              ? DateTime.parse(json['lastUpdated'])
+              : null,
       additionalData: Map<String, dynamic>.from(json['additionalData'] ?? {}),
     );
   }
@@ -405,4 +419,4 @@ class UserData {
   String toString() {
     return 'UserData(uid: $uid, name: $name, email: $email, userType: $userType)';
   }
-} 
+}

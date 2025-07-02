@@ -81,12 +81,12 @@ class QuizService {
     try {
       // This would ideally use a local database like Hive or SQLite
       // For now, we'll use a simple print statement
-      print(
+      debugPrint(
         'Storing failed submission for later: Quiz $quizId, Score: $score/$totalQuestions',
       );
       // In a real implementation, you would store this data locally
     } catch (e) {
-      print('Error storing failed submission: $e');
+      debugPrint('Error storing failed submission: $e');
     }
   }
 
@@ -245,7 +245,7 @@ class QuizService {
         return true;
       } catch (e) {
         retryCount++;
-        print('Error submitting quiz result (attempt $retryCount): $e');
+        debugPrint('Error submitting quiz result (attempt $retryCount): $e');
 
         if (retryCount >= maxRetries) {
           // Store locally for later submission
@@ -290,7 +290,7 @@ class QuizService {
         };
       }).toList();
     } catch (e) {
-      print('Error fetching user quiz history: $e');
+      debugPrint('Error fetching user quiz history: $e');
       return [];
     }
   }
@@ -410,7 +410,7 @@ class QuizService {
         'totalTimeSpent': totalTimeSpent,
       };
     } catch (e) {
-      print('Error fetching user quiz statistics: $e');
+      debugPrint('Error fetching user quiz statistics: $e');
       return {
         'quizzesCompleted': 0,
         'averageScore': 0.0,
@@ -441,7 +441,7 @@ class QuizService {
 
       return completedQuizIds.map((id) => id.toString()).toList();
     } catch (e) {
-      print('Error fetching completed quiz IDs: $e');
+      debugPrint('Error fetching completed quiz IDs: $e');
       return [];
     }
   }
@@ -461,7 +461,7 @@ class QuizService {
       final userData = userDoc.data()!;
       return userData['points'] ?? 0;
     } catch (e) {
-      print('Error fetching user points: $e');
+      debugPrint('Error fetching user points: $e');
       return 0;
     }
   }
@@ -493,7 +493,7 @@ class QuizService {
         'completedAt': data['completedAt'].toDate(),
       };
     } catch (e) {
-      print('Error fetching user quiz results: $e');
+      debugPrint('Error fetching user quiz results: $e');
       return null;
     }
   }

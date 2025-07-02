@@ -1,13 +1,9 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:muslim_kids/local_notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
 
 class TeacherHomePage extends StatefulWidget {
   final String email;
@@ -156,9 +152,10 @@ class TeacherHomePageState extends State<TeacherHomePage>
                 child: Icon(Icons.logout, color: Colors.red.shade600, size: 20),
               ),
               onPressed: () async {
+                final navigator = Navigator.of(context);
                 await FirebaseAuth.instance.signOut();
                 if (mounted) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  navigator.popUntil((route) => route.isFirst);
                 }
               },
             ),
@@ -273,7 +270,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
                 Shadow(
                   offset: Offset(0, 1),
                   blurRadius: 2,
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                 ),
               ],
             ),
@@ -380,11 +377,12 @@ class TeacherHomePageState extends State<TeacherHomePage>
           );
         },
       );
-      if (pickedTime != null) {
+      if (pickedTime != null && context.mounted) {
         timeController.text = pickedTime.format(context);
       }
     }
 
+    if (!context.mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -423,7 +421,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
                           Container(
                             padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
@@ -449,7 +447,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                 Text(
                                   "Create a new Islamic learning session",
                                   style: GoogleFonts.poppins(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -462,7 +460,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
                             icon: Container(
                               padding: EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -842,7 +840,7 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                       ),
                                     )
                                   else
-                                    Container(
+                                    SizedBox(
                                       height: 200,
                                       child: ListView.builder(
                                         padding: EdgeInsets.symmetric(
@@ -1014,7 +1012,9 @@ class TeacherHomePageState extends State<TeacherHomePage>
                                             linkController.text,
                                             15,
                                           );
-                                          Navigator.pop(context);
+                                          if (context.mounted) {
+                                            Navigator.pop(context);
+                                          }
                                         }
                                       },
                               style: ElevatedButton.styleFrom(
@@ -1180,7 +1180,7 @@ class ClassesTab extends StatelessWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
               ),
@@ -1192,7 +1192,7 @@ class ClassesTab extends StatelessWidget {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withValues(alpha: 0.05),
                   ),
                 ),
               ),
@@ -1207,7 +1207,7 @@ class ClassesTab extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -1233,7 +1233,7 @@ class ClassesTab extends StatelessWidget {
                               Text(
                                 "Manage your Islamic classes",
                                 style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 14,
                                 ),
                               ),
@@ -1438,7 +1438,7 @@ class ClassesTab extends StatelessWidget {
                               Container(
                                 padding: EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Icon(
@@ -1461,7 +1461,9 @@ class ClassesTab extends StatelessWidget {
                                       Shadow(
                                         offset: Offset(0, 1),
                                         blurRadius: 2,
-                                        color: Colors.black.withOpacity(0.3),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.3,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1542,7 +1544,7 @@ class ClassesTab extends StatelessWidget {
                                     classData['time'],
                                   )) ...[
                                 SizedBox(height: 16),
-                                Container(
+                                SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
                                     onPressed: () async {
@@ -1804,18 +1806,20 @@ class ClassesTab extends StatelessWidget {
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                FirebaseFirestore.instance
+              onPressed: () async {
+                await FirebaseFirestore.instance
                     .collection('classes')
                     .doc(docId)
                     .delete();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Class deleted successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Class deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: Text('Delete', style: TextStyle(color: Colors.white)),
@@ -2010,7 +2014,7 @@ class StudentsTab extends StatelessWidget {
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(Icons.people, color: Colors.white, size: 24),
@@ -2032,7 +2036,7 @@ class StudentsTab extends StatelessWidget {
                           Text(
                             "${selectedStudents.length} selected for next class",
                             style: GoogleFonts.poppins(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 14,
                             ),
                           ),
@@ -2046,7 +2050,7 @@ class StudentsTab extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -2139,10 +2143,10 @@ class StudentsTab extends StatelessWidget {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: avatarColor.withOpacity(0.1),
+                          color: avatarColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: avatarColor.withOpacity(0.3),
+                            color: avatarColor.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),

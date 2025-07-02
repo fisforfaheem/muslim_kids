@@ -116,27 +116,8 @@ class _NotificationPageState extends State<NotificationPage> {
                 .limit(5)
                 .get();
 
-        if (enrollmentsSnapshot.docs.isNotEmpty) {
-          debugPrint(
-            'User has enrollments but no notifications. Creating test notification...',
-          );
-
-          // Create a test notification for the user
-          DocumentReference notificationRef =
-              FirebaseFirestore.instance.collection('notifications').doc();
-          await notificationRef.set({
-            'userId': currentUser.uid,
-            'title': 'Welcome to Muslim Kids App',
-            'message': 'Your notification system is now set up correctly.',
-            'read': false,
-            'timestamp': FieldValue.serverTimestamp(),
-            'type': 'system',
-          });
-
-          debugPrint(
-            'Test notification created with ID: ${notificationRef.id}',
-          );
-        }
+        // User has enrollments but no notifications - this is normal
+        // No need to create test notifications
       }
     } catch (e) {
       debugPrint('Error checking notification delivery: $e');
@@ -250,7 +231,7 @@ class _NotificationPageState extends State<NotificationPage> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.15),
+          backgroundColor: iconColor.withValues(alpha: 0.15),
           child: Icon(iconData, color: iconColor, size: 28),
         ),
         title: Text(
@@ -490,20 +471,24 @@ class _NotificationPageState extends State<NotificationPage> {
             (n) => readNotificationIds.contains(n['id']),
           );
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Read notifications cleared.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Read notifications cleared.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } catch (e) {
         debugPrint('Error clearing read notifications: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing notifications: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error clearing notifications: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -563,20 +548,24 @@ class _NotificationPageState extends State<NotificationPage> {
         setState(() {
           notifications.clear();
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('All notifications cleared.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All notifications cleared.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } catch (e) {
         debugPrint('Error clearing all notifications: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing all notifications: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error clearing all notifications: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

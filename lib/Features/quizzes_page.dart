@@ -4,6 +4,7 @@ import 'package:muslim_kids/models/quiz_model.dart';
 import 'package:muslim_kids/services/quiz_service.dart';
 import 'package:muslim_kids/screens/quiz_detail_screen.dart';
 import 'package:muslim_kids/screens/quiz_results_screen.dart';
+import 'package:muslim_kids/widgets/navigation_helper.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:math';
 
@@ -143,6 +144,17 @@ class QuizzesPageState extends State<QuizzesPage>
               ),
             ),
             centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.help_outline, size: 28),
+                onPressed:
+                    () => NavigationHelper.showFeatureHelp(
+                      context,
+                      'Quranic Quizzes',
+                      'Test your knowledge of the Quran and Islamic teachings. Complete quizzes to earn points and unlock achievements. Tap on any quiz to start learning!',
+                    ),
+              ),
+            ],
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,

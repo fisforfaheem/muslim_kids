@@ -81,7 +81,7 @@ class QuizResultsScreenState extends State<QuizResultsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading results: $e');
+      debugPrint('Error loading results: $e');
       setState(() {
         _isLoading = false;
       });
@@ -200,7 +200,7 @@ class QuizResultsScreenState extends State<QuizResultsScreen> {
               borderRadius: BorderRadius.circular(15),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withValues(alpha: 0.2),
                   spreadRadius: 1,
                   blurRadius: 5,
                   offset: const Offset(0, 2),
@@ -214,7 +214,7 @@ class QuizResultsScreenState extends State<QuizResultsScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _getScoreColor(score).withOpacity(0.1),
+                    color: _getScoreColor(score).withValues(alpha: 0.1),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(15),
                       topRight: Radius.circular(15),

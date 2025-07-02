@@ -108,9 +108,7 @@ class FirebaseNotificationService {
           // You can add navigation logic here
         }
         break;
-      case 'test':
-        debugPrint("🧪 Test notification tapped");
-        break;
+
       default:
         debugPrint("❓ Unknown notification type: $type");
     }
@@ -143,27 +141,5 @@ class FirebaseNotificationService {
     await _localNotifications.initialize(initSettings);
   }
 
-  /// Show a local notification when a Firebase message arrives
-  Future<void> _showNotification(RemoteMessage message) async {
-    if (message.notification == null) return;
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'muslim_kids_channel', // Make sure this ID matches your channel ID
-          'Muslim Kids Notifications',
-          importance: Importance.high,
-          priority: Priority.high,
-        );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-    );
-
-    await _localNotifications.show(
-      0, // Notification ID
-      message.notification!.title,
-      message.notification!.body,
-      details,
-    );
-  }
 }

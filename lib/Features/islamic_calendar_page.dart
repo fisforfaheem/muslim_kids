@@ -39,7 +39,7 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading events: $e');
+      debugPrint('Error loading events: $e');
       setState(() {
         _isLoading = false;
       });
@@ -62,9 +62,7 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
   void _showEventDetails(IslamicEvent event) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => EventDetailScreen(event: event),
-      ),
+      MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
     );
   }
 
@@ -89,7 +87,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
         title: const Text(
           'Islamic Calendar',
           style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -104,21 +105,20 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
         ),
         elevation: 4,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildDateHeader(),
-                _buildMonthNavigator(),
-                // Main calendar area - wrapped in Expanded to handle overflow
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: _buildCalendar(),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                children: [
+                  _buildDateHeader(),
+                  _buildMonthNavigator(),
+                  // Main calendar area - wrapped in Expanded to handle overflow
+                  Expanded(
+                    child: SingleChildScrollView(child: _buildCalendar()),
                   ),
-                ),
-                _buildUpcomingEvents(),
-              ],
-            ),
+                  _buildUpcomingEvents(),
+                ],
+              ),
     );
   }
 
@@ -141,9 +141,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
               const Text(
                 "Hijri Date",
                 style: TextStyle(
-                    color: Colors.amber,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.amber,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -162,9 +163,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
               const Text(
                 "Gregorian Date",
                 style: TextStyle(
-                    color: Colors.amber,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.amber,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -189,7 +191,7 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.yellow.withOpacity(0.2),
+            color: Colors.yellow.withValues(alpha: 0.2),
             spreadRadius: 1,
             blurRadius: 2,
             offset: const Offset(0, 1),
@@ -232,7 +234,7 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -308,9 +310,9 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
     if (isSelected) {
       backgroundColor = const Color(0xFF1F4E5F);
     } else if (isSignificant) {
-      backgroundColor = Colors.amber.withOpacity(0.15);
+      backgroundColor = Colors.amber.withValues(alpha: 0.15);
     } else if (isToday) {
-      backgroundColor = const Color(0xFF2E7D32).withOpacity(0.1);
+      backgroundColor = const Color(0xFF2E7D32).withValues(alpha: 0.1);
     } else {
       backgroundColor = Colors.white;
     }
@@ -320,13 +322,17 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8.0),
-        border: isToday && !isSelected
-            ? Border.all(color: const Color(0xFF2E7D32), width: 1.5)
-            : Border.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
+        border:
+            isToday && !isSelected
+                ? Border.all(color: const Color(0xFF2E7D32), width: 1.5)
+                : Border.all(
+                  color: Colors.grey.withValues(alpha: 0.2),
+                  width: 0.5,
+                ),
         boxShadow: [
           if (isSignificant && !isSelected)
             BoxShadow(
-              color: Colors.amber.withOpacity(0.3),
+              color: Colors.amber.withValues(alpha: 0.3),
               blurRadius: 2,
               spreadRadius: 0.5,
             ),
@@ -338,11 +344,7 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
             Positioned(
               top: 2,
               right: 2,
-              child: Icon(
-                Icons.star,
-                color: Colors.amber[700],
-                size: 10,
-              ),
+              child: Icon(Icons.star, color: Colors.amber[700], size: 10),
             ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -353,13 +355,14 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: isSelected
-                      ? Colors.white
-                      : isSignificant
+                  color:
+                      isSelected
+                          ? Colors.white
+                          : isSignificant
                           ? Colors.amber[800]
                           : isToday
-                              ? const Color(0xFF2E7D32)
-                              : const Color(0xFF1F4E5F),
+                          ? const Color(0xFF2E7D32)
+                          : const Color(0xFF1F4E5F),
                 ),
               ),
               const SizedBox(height: 4),
@@ -367,10 +370,11 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withOpacity(0.2)
-                      : isSignificant
-                          ? Colors.amber.withOpacity(0.1)
+                  color:
+                      isSelected
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : isSignificant
+                          ? Colors.amber.withValues(alpha: 0.1)
                           : Colors.grey[100],
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -379,9 +383,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? Colors.white
-                        : isSignificant
+                    color:
+                        isSelected
+                            ? Colors.white
+                            : isSignificant
                             ? Colors.amber[800]
                             : Colors.grey[700],
                   ),
@@ -400,9 +405,11 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
 
     // Find the next 2 events from today (reduced from 3 to fit better)
     for (var month = today.hMonth; month <= 12; month++) {
-      for (var day = (month == today.hMonth ? today.hDay : 1);
-          day <= 30;
-          day++) {
+      for (
+        var day = (month == today.hMonth ? today.hDay : 1);
+        day <= 30;
+        day++
+      ) {
         String key = "$day-$month";
         if (_eventsMap.containsKey(key)) {
           upcomingEvents.add(_eventsMap[key]!);
@@ -436,7 +443,7 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, -3),
@@ -491,9 +498,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
                             Icon(
                               Icons.calendar_today,
                               size: 14,
-                              color: event.isHoliday
-                                  ? Colors.amber[700]
-                                  : Colors.blue[700],
+                              color:
+                                  event.isHoliday
+                                      ? Colors.amber[700]
+                                      : Colors.blue[700],
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -501,9 +509,10 @@ class IslamicCalendarPageState extends State<IslamicCalendarPage> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: event.isHoliday
-                                    ? Colors.amber[700]
-                                    : Colors.blue[700],
+                                color:
+                                    event.isHoliday
+                                        ? Colors.amber[700]
+                                        : Colors.blue[700],
                               ),
                             ),
                           ],

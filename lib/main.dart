@@ -13,8 +13,6 @@ import 'firebase_notification_service.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:muslim_kids/add_multiple_quizzes.dart';
-import 'package:muslim_kids/quiz_debug_screen.dart';
 
 @pragma('vm:entry-point') // Ensures it can be called from isolate
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -50,9 +48,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           break;
         case 'prayer_reminder':
           channelId = 'prayer_notifications';
-          break;
-        case 'test':
-          channelId = 'test_notifications';
           break;
         default:
           channelId = 'default_channel';

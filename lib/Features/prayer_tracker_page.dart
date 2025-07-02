@@ -5,6 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:muslim_kids/services/prayer_alarm_service.dart';
+import 'package:muslim_kids/services/badge_service.dart';
+
+import 'package:muslim_kids/screens/quiz_completion_screen.dart';
+import 'package:muslim_kids/widgets/navigation_helper.dart';
 
 class PrayerTrackerPage extends StatefulWidget {
   const PrayerTrackerPage({super.key});
@@ -52,6 +56,8 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
   bool allPrayersCompletedToday = false;
   DateTime? lastStreakUpdateDate;
   Map<String, DateTime> prayerCompletionTimes = {};
+
+  final BadgeService _badgeService = BadgeService();
 
   @override
   void initState() {
@@ -202,6 +208,15 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
         setState(() {
           streakCount = currentStreak;
         });
+
+        // Check for new badges
+        final newBadges = await _badgeService.checkAndAwardBadges();
+        if (newBadges.isNotEmpty && mounted) {
+          await showDialog(
+            context: context,
+            builder: (context) => BadgeUnlockedDialog(badges: newBadges),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error calculating streak: $e');
@@ -308,13 +323,27 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
           }
 
           // Increment streak
+          currentStreak++;
+
+          // Update user document
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
               .update({
-                'prayerStreak': currentStreak + 1,
+                'prayerStreak': currentStreak,
                 'lastPrayerDate': FieldValue.serverTimestamp(),
               });
+
+          debugPrint('Streak updated to $currentStreak');
+
+          // Check for new badges
+          final newBadges = await _badgeService.checkAndAwardBadges();
+          if (newBadges.isNotEmpty && mounted) {
+            await showDialog(
+              context: context,
+              builder: (context) => BadgeUnlockedDialog(badges: newBadges),
+            );
+          }
 
           // Mark that all prayers were completed today to prevent multiple streak increments
           await FirebaseFirestore.instance
@@ -328,7 +357,7 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
               });
 
           setState(() {
-            streakCount = currentStreak + 1;
+            streakCount = currentStreak;
             allPrayersCompletedToday = true;
             lastStreakUpdateDate = DateTime.now();
           });
@@ -337,6 +366,8 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
           if (mounted) {
             _showAchievementDialog();
           }
+        } else {
+          debugPrint('Streak already updated today');
         }
       }
     } catch (e) {
@@ -474,6 +505,17 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
               icon: const Icon(Icons.arrow_back, size: 30),
               onPressed: () => Navigator.of(context).pop(),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.help_outline, size: 28),
+                onPressed:
+                    () => NavigationHelper.showFeatureHelp(
+                      context,
+                      'Prayer Tracker',
+                      'Track your daily prayers and build a streak! Tap the checkboxes to mark prayers as completed. Keep track of your progress and earn rewards for consistency.',
+                    ),
+              ),
+            ],
           ),
         ),
       ),

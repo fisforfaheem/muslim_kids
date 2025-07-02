@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:muslim_kids/services/quiz_service.dart';
 import 'package:muslim_kids/Features/quizzes_page.dart';
 import 'package:intl/intl.dart';
+import 'package:muslim_kids/models/badge_model.dart';
+import 'package:muslim_kids/services/badge_service.dart';
+import 'package:muslim_kids/widgets/navigation_helper.dart';
 
 class ProgressPage extends StatefulWidget {
   final bool fromBottomNav;
@@ -18,17 +21,21 @@ class _ProgressPageState extends State<ProgressPage>
   final QuizService _quizService = QuizService();
   late TabController _tabController;
   bool _isLoading = true;
-  List<Map<String, dynamic>> _quizResults = [];
   int _totalPoints = 0;
   int _completedQuizzes = 0;
   double _averageScore = 0;
   List<Map<String, dynamic>> _recentActivity = [];
+  final BadgeService _badgeService = BadgeService();
+  List<BadgeModel> _allBadges = [];
+  List<String> _earnedBadgeIds = [];
+  bool _isLoadingBadges = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadUserProgress();
+    _loadBadges();
   }
 
   @override
@@ -93,7 +100,6 @@ class _ProgressPageState extends State<ProgressPage>
       );
 
       setState(() {
-        _quizResults = history;
         _totalPoints = points;
         _completedQuizzes = completedQuizzes;
         _uniqueQuizzes = uniqueQuizzes;
@@ -104,9 +110,23 @@ class _ProgressPageState extends State<ProgressPage>
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading progress: $e');
+      debugPrint('Error loading progress: $e');
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadBadges() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingBadges = true;
+    });
+    _allBadges = _badgeService.getAvailableBadges();
+    _earnedBadgeIds = await _badgeService.getEarnedBadgeIds();
+    if (mounted) {
+      setState(() {
+        _isLoadingBadges = false;
       });
     }
   }
@@ -145,6 +165,20 @@ class _ProgressPageState extends State<ProgressPage>
               ),
             ),
             centerTitle: true,
+            actions:
+                widget.fromBottomNav
+                    ? null
+                    : [
+                      IconButton(
+                        icon: const Icon(Icons.help_outline, size: 28),
+                        onPressed:
+                            () => NavigationHelper.showFeatureHelp(
+                              context,
+                              'My Progress',
+                              'Track your learning journey! View your quiz statistics, earned points, achievements, and recent activity. Keep learning to unlock more badges and improve your scores.',
+                            ),
+                      ),
+                    ],
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
@@ -243,7 +277,7 @@ class _ProgressPageState extends State<ProgressPage>
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
+                    color: Colors.grey.withValues(alpha: 0.2),
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, 2),
@@ -376,201 +410,35 @@ class _ProgressPageState extends State<ProgressPage>
   }
 
   Widget _buildAchievementsTab() {
-    // Achievement definition - level, points required, icon, title, description, etc.
-    final achievements = [
-      {
-        'title': 'Quiz Beginner',
-        'description': 'Complete your first quiz',
-        'icon': Icons.emoji_events,
-        'color': Colors.blue,
-        'unlocked': _completedQuizzes >= 1,
-      },
-      {
-        'title': 'Quiz Explorer',
-        'description': 'Complete 5 different quizzes',
-        'icon': Icons.explore,
-        'color': Colors.green,
-        'unlocked': _uniqueQuizzes >= 5,
-      },
-      {
-        'title': 'Quiz Master',
-        'description': 'Complete 10 different quizzes',
-        'icon': Icons.school,
-        'color': Colors.purple,
-        'unlocked': _uniqueQuizzes >= 10,
-      },
-      {
-        'title': 'Perfect Score',
-        'description': 'Get 100% on any quiz',
-        'icon': Icons.star,
-        'color': Colors.amber,
-        'unlocked': _quizResults.any(
-          (result) =>
-              (result['score'] as int) == (result['totalQuestions'] as int),
-        ),
-      },
-      {
-        'title': 'Knowledge Seeker',
-        'description': 'Earn at least 50 reward points',
-        'icon': Icons.lightbulb,
-        'color': Colors.orange,
-        'unlocked': _totalPoints >= 50,
-      },
-      {
-        'title': 'Quran Scholar',
-        'description': 'Earn at least 100 reward points',
-        'icon': Icons.auto_awesome,
-        'color': Colors.indigo,
-        'unlocked': _totalPoints >= 100,
-      },
-      {
-        'title': 'Speed Learner',
-        'description': 'Complete a quiz in under 60 seconds',
-        'icon': Icons.timer,
-        'color': Colors.red,
-        'unlocked': _quizResults.any(
-          (result) => (result['timeSpentInSeconds'] as int? ?? 999) < 60,
-        ),
-      },
-      {
-        'title': 'Consistent Learner',
-        'description': 'Complete at least 5 quizzes with 80% or higher score',
-        'icon': Icons.timeline,
-        'color': Colors.teal,
-        'unlocked':
-            _quizResults
-                .where(
-                  (r) =>
-                      (r['score'] as int) / (r['totalQuestions'] as int) >= 0.8,
-                )
-                .length >=
-            5,
-      },
-    ];
+    if (_isLoadingBadges) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    final unlockedAchievements =
-        achievements.where((a) => a['unlocked'] as bool).toList();
-    final lockedAchievements =
-        achievements.where((a) => !(a['unlocked'] as bool)).toList();
+    if (_allBadges.isEmpty) {
+      return const Center(
+        child: Text(
+          'No achievements available yet.',
+          style: TextStyle(fontSize: 18),
+        ),
+      );
+    }
 
     return RefreshIndicator(
-      onRefresh: _loadUserProgress,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+      onRefresh: _loadBadges,
+      child: GridView.builder(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Progress summary
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.purple.shade400, Colors.pink.shade300],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withAlpha(77), // 0.3 opacity
-                    spreadRadius: 1,
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Your Achievements',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${unlockedAchievements.length}',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        ' / ${achievements.length}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withAlpha(179), // 0.7 opacity
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  LinearProgressIndicator(
-                    value: unlockedAchievements.length / achievements.length,
-                    backgroundColor: Colors.white30,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.white,
-                    ),
-                    minHeight: 10,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Keep going to unlock all achievements!',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withAlpha(230), // 0.9 opacity
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Unlocked Achievements
-            if (unlockedAchievements.isNotEmpty) ...[
-              Text(
-                'Unlocked Achievements',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...unlockedAchievements.map(
-                (achievement) => _buildAchievementItem(achievement, true),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Locked Achievements
-            if (lockedAchievements.isNotEmpty) ...[
-              Text(
-                'Achievements to Unlock',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...lockedAchievements.map(
-                (achievement) => _buildAchievementItem(achievement, false),
-              ),
-            ],
-          ],
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.8,
         ),
+        itemCount: _allBadges.length,
+        itemBuilder: (context, index) {
+          final badge = _allBadges[index];
+          final isEarned = _earnedBadgeIds.contains(badge.id);
+          return BadgeCard(badge: badge, isEarned: isEarned);
+        },
       ),
     );
   }
@@ -715,76 +583,6 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
-  Widget _buildAchievementItem(
-    Map<String, dynamic> achievement,
-    bool unlocked,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color:
-              unlocked
-                  ? (achievement['color'] as Color).withAlpha(
-                    128,
-                  ) // 0.5 opacity
-                  : Colors.grey.withAlpha(77), // 0.3 opacity
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color:
-                  unlocked
-                      ? (achievement['color'] as Color).withAlpha(
-                        51,
-                      ) // 0.2 opacity
-                      : Colors.grey.withAlpha(26), // 0.1 opacity
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              achievement['icon'] as IconData,
-              color: unlocked ? achievement['color'] as Color : Colors.grey,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  achievement['title'] as String,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: unlocked ? Colors.black87 : Colors.grey,
-                  ),
-                ),
-                Text(
-                  achievement['description'] as String,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: unlocked ? Colors.black54 : Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            unlocked ? Icons.check_circle : Icons.lock,
-            color: unlocked ? Colors.green : Colors.grey,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState(String title, String message) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -845,5 +643,75 @@ class _ProgressPageState extends State<ProgressPage>
     } else {
       return 'More study needed';
     }
+  }
+}
+
+class BadgeCard extends StatelessWidget {
+  final BadgeModel badge;
+  final bool isEarned;
+
+  const BadgeCard({super.key, required this.badge, required this.isEarned});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message:
+          '${badge.name}\n${badge.description}\nCriteria: ${badge.criteria}',
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Opacity(
+        opacity: isEarned ? 1.0 : 0.4,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withValues(alpha: 0.2),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+            border: Border.all(
+              color: isEarned ? badge.color : Colors.grey.shade300,
+              width: 2,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor:
+                    isEarned
+                        ? badge.color.withValues(alpha: 0.15)
+                        : Colors.grey.shade200,
+                child: Icon(
+                  isEarned ? badge.icon : Icons.lock_outline,
+                  size: 35,
+                  color: isEarned ? badge.color : Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                badge.name,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: isEarned ? Colors.black87 : Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

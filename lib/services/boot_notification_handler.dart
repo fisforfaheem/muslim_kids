@@ -105,6 +105,6 @@ void _rescheduleNotificationsCallback() async {
       '${BootNotificationHandler.tag} Notifications rescheduled successfully',
     );
   } catch (e) {
-    print('${BootNotificationHandler.tag} Error in callback: $e');
+    debugPrint('${BootNotificationHandler.tag} Error in callback: $e');
   }
 }

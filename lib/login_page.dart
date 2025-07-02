@@ -357,7 +357,7 @@ class LoginPageState extends State<LoginPage> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
                           color: const Color.fromARGB(
@@ -365,12 +365,12 @@ class LoginPageState extends State<LoginPage> {
                             255,
                             193,
                             7,
-                          ).withOpacity(0.5),
+                          ).withValues(alpha: 0.5),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -534,7 +534,7 @@ class LoginPageState extends State<LoginPage> {
                         hintText: 'Enter your email',
                         hintStyle: TextStyle(color: Colors.grey.shade500),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.95),
+                        fillColor: Colors.white.withValues(alpha: 0.95),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
@@ -550,7 +550,7 @@ class LoginPageState extends State<LoginPage> {
                               255,
                               193,
                               7,
-                            ).withOpacity(0.4),
+                            ).withValues(alpha: 0.4),
                             width: 1.5,
                           ),
                         ),
@@ -584,7 +584,7 @@ class LoginPageState extends State<LoginPage> {
                               255,
                               193,
                               7,
-                            ).withOpacity(0.1),
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -626,7 +626,7 @@ class LoginPageState extends State<LoginPage> {
                         hintText: 'Enter your password',
                         hintStyle: TextStyle(color: Colors.grey.shade500),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.95),
+                        fillColor: Colors.white.withValues(alpha: 0.95),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
@@ -642,7 +642,7 @@ class LoginPageState extends State<LoginPage> {
                               255,
                               193,
                               7,
-                            ).withOpacity(0.4),
+                            ).withValues(alpha: 0.4),
                             width: 1.5,
                           ),
                         ),
@@ -676,7 +676,7 @@ class LoginPageState extends State<LoginPage> {
                               255,
                               193,
                               7,
-                            ).withOpacity(0.1),
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
