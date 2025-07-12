@@ -238,6 +238,9 @@ class _KidHomePageContentState extends State<KidHomePageContent>
     'assets/slide1.jpg',
     'assets/slide2.jpg',
     'assets/slide3.jpg',
+    'assets/77.jpg',
+    'assets/22.jpg',
+    'assets/55.jpg',
   ];
 
   List<Map<String, dynamic>> get tiles => [
