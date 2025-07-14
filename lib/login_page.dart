@@ -89,7 +89,7 @@ class LoginPageState extends State<LoginPage> {
         String errorMessage =
             selectedRole == 'Kid'
                 ? 'This account is registered as a Teacher. Please select "Teacher Profile" and try again.'
-                : 'This account is registered as a Student. Please select "Kid Profile" and try again.';
+                : 'This account is registered as a Kid. Please select "Kid Profile" and try again.';
 
         throw FirebaseAuthException(
           code: 'role-mismatch',
@@ -340,7 +340,7 @@ class LoginPageState extends State<LoginPage> {
                     AnimatedTextKit(
                       animatedTexts: [
                         TypewriterAnimatedText(
-                          'Muslim Kids',
+                          'MuslimKids',
                           textStyle: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -447,7 +447,7 @@ class LoginPageState extends State<LoginPage> {
                                             : Colors.grey.shade600,
                                   ),
                                   label: const Text(
-                                    'Student',
+                                    'Kid',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
