@@ -467,12 +467,12 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                     ),
                     // Carousel with fun styling
                     Container(
-                      margin: const EdgeInsets.only(bottom: 24),
+                      margin: const EdgeInsets.only(bottom: 20),
                       child: SizedBox(
-                        height: 240,
+                        height: 180,
                         child: CarouselSlider(
                           options: CarouselOptions(
-                            height: 240.0,
+                            height: 180.0,
                             autoPlay: true,
                             enlargeCenterPage: true,
                             viewportFraction: 0.85,
@@ -505,7 +505,7 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                       image,
                                       fit: BoxFit.contain,
                                       width: double.infinity,
-                                      height: 240.0,
+                                      height: 180.0,
                                       cacheWidth: 800,
                                     ),
                                   ),
@@ -524,9 +524,9 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                   gridDelegate:
                                       const SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount: 2,
-                                        crossAxisSpacing: 16,
-                                        mainAxisSpacing: 16,
-                                        childAspectRatio: 1.1,
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12,
+                                        childAspectRatio: 0.9,
                                       ),
                                   itemCount: 6,
                                   itemBuilder: (context, index) {
@@ -537,9 +537,9 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                   gridDelegate:
                                       const SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount: 2,
-                                        crossAxisSpacing: 16,
-                                        mainAxisSpacing: 16,
-                                        childAspectRatio: 1.1,
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12,
+                                        childAspectRatio: 0.9,
                                       ),
                                   itemCount: tiles.length,
                                   itemBuilder: (context, index) {
@@ -587,17 +587,17 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                               ),
                                             ),
                                             child: Padding(
-                                              padding: const EdgeInsets.all(18),
+                                              padding: const EdgeInsets.all(16),
                                               child: Column(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   Container(
-                                                    width: 60,
-                                                    height: 60,
+                                                    width: 70,
+                                                    height: 70,
                                                     padding:
                                                         const EdgeInsets.all(
-                                                          12,
+                                                          14,
                                                         ),
                                                     decoration: BoxDecoration(
                                                       color: Colors.white
@@ -620,7 +620,7 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                                       fit: BoxFit.contain,
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 16),
+                                                  const SizedBox(height: 12),
                                                   Text(
                                                     tiles[index]['title'],
                                                     textAlign: TextAlign.center,
@@ -628,9 +628,9 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                                       fontWeight:
                                                           FontWeight.w800,
                                                       color: Colors.white,
-                                                      fontSize: 14,
+                                                      fontSize: 15,
                                                       letterSpacing: 0.3,
-                                                      height: 1.3,
+                                                      height: 1.2,
                                                       shadows: [
                                                         Shadow(
                                                           offset: Offset(0, 2),

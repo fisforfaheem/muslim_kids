@@ -23,7 +23,7 @@ class IslamicHeader extends StatelessWidget implements PreferredSizeWidget {
     this.showLogout = true,
     this.subtitle = 'May Allah bless your day',
     this.showHelp = true,
-    this.preferredSize = const Size.fromHeight(80),
+    this.preferredSize = const Size.fromHeight(100),
   });
 
   @override
@@ -52,7 +52,7 @@ class IslamicHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
             children: [
               Stack(
@@ -93,22 +93,26 @@ class IslamicHeader extends StatelessWidget implements PreferredSizeWidget {
                     Text(
                       isLoading ? 'Loading...' : 'Welcome, $userName!',
                       style: GoogleFonts.quicksand(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         letterSpacing: 0.3,
                       ),
                       overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
+                    const SizedBox(height: 4),
                     if (subtitle != null)
                       Text(
                         subtitle!,
                         style: GoogleFonts.quicksand(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: Colors.amber[100], // Fun amber accent
                           letterSpacing: 0.2,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                   ],
                 ),
