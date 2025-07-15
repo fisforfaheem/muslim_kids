@@ -498,51 +498,171 @@ class _ParentalControlsWidgetState extends State<ParentalControlsWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Card(
-      margin: const EdgeInsets.all(16),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with icon and title
             Row(
               children: [
-                Icon(Icons.family_restroom, color: Colors.blue),
-                const SizedBox(width: 10),
-                Text(
-                  'Parental Navigation Controls',
-                  style: GoogleFonts.kanit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.family_restroom,
+                    color: Colors.blue.shade600,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Parental Navigation Controls',
+                    style: GoogleFonts.kanit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
 
-            SwitchListTile(
-              title: const Text('Navigation Guidance'),
-              subtitle: const Text('Show help tips and tutorials for children'),
-              value: _guidanceEnabled,
-              onChanged: _toggleGuidance,
-              activeColor: Colors.green,
+            // Navigation Guidance Toggle
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: SwitchListTile(
+                title: Text(
+                  'Navigation Guidance',
+                  style: GoogleFonts.kanit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                subtitle: Text(
+                  'Show help tips and tutorials for children',
+                  style: GoogleFonts.kanit(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                value: _guidanceEnabled,
+                onChanged: _toggleGuidance,
+                activeColor: Colors.green.shade600,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            ListTile(
-              leading: Icon(Icons.help_outline, color: Colors.blue),
-              title: const Text('Show App Tutorial'),
-              subtitle: const Text('Replay the welcome tutorial'),
-              onTap: () => NavigationHelper.showAppTutorial(context),
+            // Show App Tutorial Button
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.help_outline,
+                    color: Colors.blue.shade600,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  'Show App Tutorial',
+                  style: GoogleFonts.kanit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                subtitle: Text(
+                  'Replay the welcome tutorial',
+                  style: GoogleFonts.kanit(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                onTap: () => NavigationHelper.showAppTutorial(context),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
             ),
 
-            ListTile(
-              leading: Icon(Icons.info_outline, color: Colors.orange),
-              title: const Text('Navigation Help'),
-              subtitle: const Text('View navigation tips and tricks'),
-              onTap: () => NavigationHelper.showNavigationHelp(context),
+            const SizedBox(height: 12),
+
+            // Navigation Help Button
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Colors.orange.shade600,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  'Navigation Help',
+                  style: GoogleFonts.kanit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                subtitle: Text(
+                  'View navigation tips and tricks',
+                  style: GoogleFonts.kanit(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                onTap: () => NavigationHelper.showNavigationHelp(context),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
             ),
           ],
         ),
