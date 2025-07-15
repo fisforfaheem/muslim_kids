@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:muslim_kids/home_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:muslim_kids/widgets/app_help_guide.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
