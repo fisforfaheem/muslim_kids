@@ -10,7 +10,7 @@ class QuranicQuizData {
         difficulty: 'Easy',
         rewardPoints: 20,
         category: 'Quran',
-        imageUrl: 'assets/quran_quiz.jpg',
+        imageUrl: 'assets/quizzes.jpg',
         questions: [
           QuizQuestion(
             question: 'How many chapters (Surahs) are there in the Quran?',
@@ -107,7 +107,7 @@ class QuranicQuizData {
         difficulty: 'Medium',
         rewardPoints: 25,
         category: 'Quran',
-        imageUrl: 'assets/prophets_quiz.jpg',
+        imageUrl: 'assets/videos.jpg',
         questions: [
           QuizQuestion(
             question: 'Who built the Ark as mentioned in the Quran?',

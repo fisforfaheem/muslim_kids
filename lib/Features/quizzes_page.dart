@@ -47,38 +47,10 @@ class QuizzesPageState extends State<QuizzesPage>
       final completedQuizIds = await _quizService.getCompletedQuizIds();
       final userPoints = await _quizService.getUserPoints();
 
-      // List of available quiz images
-      final List<String> quizImages = [
-        'assets/11.jpg',
-        'assets/22.jpg',
-        'assets/33.jpg',
-        'assets/44.jpg',
-        'assets/55.jpg',
-        'assets/66.jpg',
-        'assets/77.jpg',
-        'assets/88.jpg',
-        'assets/99.jpg',
-      ];
-
-      final random = Random();
-
       setState(() {
         // Convert Map data to QuizModel objects
         _quizzes =
-            quizzes.asMap().entries.map((entry) {
-              final quizData = entry.value;
-
-              // Determine the image URL - Assign a random image from quizImages
-              String determinedImageUrl;
-
-              if (quizImages.isNotEmpty) {
-                determinedImageUrl =
-                    quizImages[random.nextInt(quizImages.length)];
-              } else {
-                // Ultimate fallback if quizImages is empty
-                determinedImageUrl = 'assets/child.jpg'; // Default image
-              }
-
+            quizzes.map((quizData) {
               return QuizModel(
                 id: quizData['id'] ?? '',
                 title: quizData['title'] ?? '',
@@ -100,7 +72,9 @@ class QuizzesPageState extends State<QuizzesPage>
                         )
                         .toList(),
                 category: quizData['category'] ?? 'General',
-                imageUrl: determinedImageUrl,
+                imageUrl:
+                    quizData['imageUrl'] ??
+                    'assets/child.jpg', // Use imageUrl from data, with a fallback
               );
             }).toList();
         _completedQuizIds = completedQuizIds;
@@ -267,7 +241,7 @@ class QuizzesPageState extends State<QuizzesPage>
                           quiz.imageUrl,
                           width: double.infinity,
                           height: 140,
-                          fit: BoxFit.contain,
+                          fit: BoxFit.fill,
                         ),
                       ),
                       Positioned(

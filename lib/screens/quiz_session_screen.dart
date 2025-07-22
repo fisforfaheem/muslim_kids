@@ -529,10 +529,21 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
     final isSelected = _selectedAnswerIndex == index;
     final isCorrect = index == _currentQuestion.correctOptionIndex;
 
+    // Define a more vibrant color palette for options
+    final optionColors = [
+      Colors.blue.shade400,
+      Colors.green.shade400,
+      Colors.orange.shade400,
+      Colors.purple.shade400,
+    ];
+
+    // Get the color for the current option, cycling through the palette
+    final optionColor = optionColors[index % optionColors.length];
+
     // Define colors based on selection and reveal state
     Color backgroundColor;
     Color borderColor;
-    Color textColor = Colors.black87;
+    Color textColor = Colors.white; // White text for better contrast
 
     if (_isAnswerRevealed) {
       if (isCorrect) {
@@ -544,14 +555,17 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
         borderColor = Colors.red.shade400;
         textColor = Colors.red.shade800;
       } else {
-        backgroundColor = Colors.grey.shade100;
-        borderColor = Colors.grey.shade300;
+        backgroundColor = Colors.grey.shade200;
+        borderColor = Colors.grey.shade400;
+        textColor = Colors.black54; // Darker text for grey background
       }
     } else {
-      backgroundColor =
-          isSelected ? _currentThemeColor.withValues(alpha: 0.2) : Colors.white;
+      // Use the vibrant color palette for unselected options
+      backgroundColor = isSelected ? optionColor.withOpacity(0.8) : optionColor;
       borderColor =
-          isSelected ? _currentThemeColor : Colors.grey.withValues(alpha: 0.5);
+          isSelected
+              ? Colors.white
+              : Colors.transparent; // White border for selected
     }
 
     return GestureDetector(
@@ -562,7 +576,15 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor),
+          border: Border.all(color: borderColor, width: isSelected ? 3 : 0),
+          boxShadow: [
+            if (isSelected)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 5,
+                spreadRadius: 1,
+              ),
+          ],
         ),
         child: Row(
           children: [
@@ -570,17 +592,14 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? _currentThemeColor
-                        : Colors.grey.withValues(alpha: 0.3),
+                color: Colors.white,
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Text(
                   String.fromCharCode(65 + index), // A, B, C, D, etc.
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color: optionColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -593,7 +612,7 @@ class QuizSessionScreenState extends State<QuizSessionScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   color: textColor,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),

@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:muslim_kids/models/islamic_video.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final IslamicVideo video;
 
-  const VideoPlayerScreen({
-    super.key,
-    required this.video,
-  });
+  const VideoPlayerScreen({super.key, required this.video});
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -17,6 +16,8 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late YoutubePlayerController _controller;
   bool _isPlayerReady = false;
+  final TextEditingController _reviewController = TextEditingController();
+  double _rating = 0;
 
   @override
   void initState() {
@@ -50,7 +51,63 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _controller.dispose();
+    _reviewController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitReview() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You need to be logged in to leave a review.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_reviewController.text.isEmpty || _rating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please provide a rating and a review.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('videos')
+          .doc(widget.video.id)
+          .collection('reviews')
+          .add({
+            'review': _reviewController.text,
+            'rating': _rating,
+            'userId': user.uid,
+            'userName': user.displayName ?? 'Anonymous',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you for your review!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _reviewController.clear();
+      setState(() {
+        _rating = 0;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit review: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -104,17 +161,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'What did you learn from this video?',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    'Leave a Review',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _rating = index + 1.0;
+                          });
+                        },
+                        icon: Icon(
+                          index < _rating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                        ),
+                      );
+                    }),
                   ),
                   const SizedBox(height: 8),
                   TextField(
+                    controller: _reviewController,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText: 'Share your thoughts...',
+                      hintText: 'Write your review here...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -122,14 +193,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Thank you for sharing your thoughts!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
+                    onPressed: _submitReview,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
                       foregroundColor: Colors.white,
@@ -139,14 +203,89 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Submit'),
+                    child: const Text('Submit Review'),
                   ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Reviews',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildReviewsList(),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildReviewsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('videos')
+              .doc(widget.video.id)
+              .collection('reviews')
+              .orderBy('timestamp', descending: true)
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text('No reviews yet. Be the first to review!'),
+          );
+        }
+
+        final reviews = snapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: reviews.length,
+          itemBuilder: (context, index) {
+            final review = reviews[index].data() as Map<String, dynamic>;
+            final rating = review['rating'] as double;
+            final reviewText = review['review'] as String;
+            final userName = review['userName'] as String;
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          userName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: List.generate(5, (i) {
+                            return Icon(
+                              i < rating ? Icons.star : Icons.star_border,
+                              color: Colors.amber,
+                              size: 16,
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(reviewText),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
