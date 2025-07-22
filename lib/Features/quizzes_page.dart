@@ -267,7 +267,7 @@ class QuizzesPageState extends State<QuizzesPage>
                           quiz.imageUrl,
                           width: double.infinity,
                           height: 140,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         ),
                       ),
                       Positioned(

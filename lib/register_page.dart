@@ -149,9 +149,13 @@ class RegisterPageState extends State<RegisterPage> {
         (route) => false, // Remove all previous routes
       );
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Registration failed')),
-      );
+      String errorMessage = e.message ?? 'Registration failed';
+      if (e.code == 'invalid-email') {
+        errorMessage = 'Enter a valid email, like name@example.com';
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
     } finally {
       setState(() => isLoading = false);
     }

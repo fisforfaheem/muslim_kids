@@ -587,34 +587,14 @@ class _KidHomePageContentState extends State<KidHomePageContent>
                                               ),
                                             ),
                                             child: Padding(
-                                              padding: const EdgeInsets.all(16),
+                                              padding: const EdgeInsets.all(12),
                                               child: Column(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
-                                                  Container(
-                                                    width: 70,
-                                                    height: 70,
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          14,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white
-                                                          .withAlpha(200),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            16,
-                                                          ),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: Colors.white
-                                                              .withAlpha(150),
-                                                          blurRadius: 8,
-                                                          spreadRadius: 1,
-                                                        ),
-                                                      ],
-                                                    ),
+                                                  SizedBox(
+                                                    width: 80,
+                                                    height: 80,
                                                     child: Image.asset(
                                                       tiles[index]['image'],
                                                       fit: BoxFit.contain,

@@ -231,7 +231,7 @@ class QuizDetailScreenState extends State<QuizDetailScreen> {
                       decoration: BoxDecoration(
                         image: DecorationImage(
                           image: AssetImage(_quiz!.imageUrl),
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),

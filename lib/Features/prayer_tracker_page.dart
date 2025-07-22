@@ -227,21 +227,6 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // Validate if the prayer can be toggled based on time
-        if (!_canTogglePrayer(prayer)) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'You can only mark $prayer as completed during or after its time',
-                ),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          return;
-        }
-
         // Toggle the prayer status safely without using null assertion
         final bool currentValue = todayPrayers[prayer] ?? false;
         final bool newValue = !currentValue;
@@ -378,31 +363,6 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
         ).showSnackBar(SnackBar(content: Text('Error updating prayer: $e')));
       }
     }
-  }
-
-  // Check if a prayer can be toggled based on the current time
-  bool _canTogglePrayer(String prayer) {
-    // If we don't have prayer times yet, allow toggling
-    if (prayerTimes.isEmpty || prayerTimes.length < prayerNames.length) {
-      return true;
-    }
-
-    // Get the current time
-    final now = TimeOfDay.now();
-
-    // Convert to minutes for easier comparison
-    final currentMinutes = now.hour * 60 + now.minute;
-
-    // Get the index of the prayer
-    final index = prayerNames.indexOf(prayer);
-    if (index == -1) return true;
-
-    // Get the prayer time
-    final prayerTime = prayerTimes[index];
-    final prayerMinutes = prayerTime.hour * 60 + prayerTime.minute;
-
-    // Allow marking prayers as completed only during or after their time
-    return currentMinutes >= prayerMinutes;
   }
 
   void _showAchievementDialog() {
@@ -619,151 +579,32 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
 
                     const SizedBox(height: 20),
 
-                    // Prayer List - Updated to match the screenshot UI
+                    // Prayer List - Updated to show two lists
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: prayerNames.length,
-                        itemBuilder: (context, index) {
-                          String prayer = prayerNames[index];
-                          bool isCompleted = todayPrayers[prayer] ?? false;
-
-                          // Use different colors for different prayers
-                          Color bgColor;
-                          if (prayer == 'Fajr') {
-                            bgColor = Colors.blue.shade50;
-                          } else if (prayer == 'Dhuhr') {
-                            bgColor = Colors.orange.shade50;
-                          } else if (prayer == 'Asr') {
-                            bgColor = Colors.green.shade50;
-                          } else if (prayer == 'Maghrib') {
-                            bgColor = Colors.purple.shade50;
-                          } else {
-                            bgColor = Colors.indigo.shade50;
-                          }
-
-                          // We're no longer displaying prayer times as per manager's request
-                          // Instead, we'll just check if the prayer is currently active based on time of day
-                          bool isActiveTime = false;
-                          if (prayerTimes.isNotEmpty &&
-                              index < prayerTimes.length) {
-                            final now = TimeOfDay.now();
-                            final currentMinutes = now.hour * 60 + now.minute;
-                            final prayerMinutes =
-                                prayerTimes[index].hour * 60 +
-                                prayerTimes[index].minute;
-
-                            // Prayer is active if it's within the current hour
-                            isActiveTime =
-                                (currentMinutes >= prayerMinutes &&
-                                    currentMinutes < prayerMinutes + 60);
-                          }
-
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                      child: Row(
+                        children: [
+                          // First list of prayers (Fajr, Dhuhr, Asr)
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: 3, // First 3 prayers
+                              itemBuilder: (context, index) {
+                                String prayer = prayerNames[index];
+                                return _buildPrayerCard(prayer);
+                              },
                             ),
-                            elevation: 2,
-                            margin: const EdgeInsets.only(bottom: 10),
-                            color:
-                                isActiveTime ? bgColor.withAlpha(204) : bgColor,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow:
-                                      isActiveTime
-                                          ? [
-                                            BoxShadow(
-                                              color: prayerColors[prayer]!
-                                                  .withAlpha(76),
-                                              blurRadius: 8,
-                                              spreadRadius: 2,
-                                            ),
-                                          ]
-                                          : null,
-                                ),
-                                child: Icon(
-                                  prayerIcons[prayer], // Use the defined prayer icons
-                                  color: prayerColors[prayer],
-                                  size: 24,
-                                ),
-                              ),
-                              title: Text(
-                                prayer,
-                                style: GoogleFonts.kanit(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: prayerColors[prayer],
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    prayerDescriptions[prayer] ?? '',
-                                    style: GoogleFonts.kanit(
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                  // Prayer time display removed as per manager's request
-                                  if (isActiveTime)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 4),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'CURRENT PRAYER',
-                                        style: GoogleFonts.kanit(
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              trailing: InkWell(
-                                onTap: () => _togglePrayer(prayer),
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color:
-                                          isCompleted
-                                              ? Colors.green
-                                              : Colors.grey.shade400,
-                                      width: isCompleted ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                  child:
-                                      isCompleted
-                                          ? const Icon(
-                                            Icons.check,
-                                            color: Colors.green,
-                                            size: 24,
-                                          )
-                                          : null,
-                                ),
-                              ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Second list of prayers (Maghrib, Isha)
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: 2, // Last 2 prayers
+                              itemBuilder: (context, index) {
+                                String prayer = prayerNames[index + 3];
+                                return _buildPrayerCard(prayer);
+                              },
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ),
 
@@ -800,6 +641,81 @@ class _PrayerTrackerPageState extends State<PrayerTrackerPage> {
                   ],
                 ),
               ),
+    );
+  }
+
+  // Helper widget to build a prayer card, to avoid code duplication
+  Widget _buildPrayerCard(String prayer) {
+    bool isCompleted = todayPrayers[prayer] ?? false;
+
+    // Use different colors for different prayers
+    Color bgColor;
+    if (prayer == 'Fajr') {
+      bgColor = Colors.blue.shade50;
+    } else if (prayer == 'Dhuhr') {
+      bgColor = Colors.orange.shade50;
+    } else if (prayer == 'Asr') {
+      bgColor = Colors.green.shade50;
+    } else if (prayer == 'Maghrib') {
+      bgColor = Colors.purple.shade50;
+    } else {
+      bgColor = Colors.indigo.shade50;
+    }
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 10),
+      color: bgColor,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            prayerIcons[prayer],
+            color: prayerColors[prayer],
+            size: 24,
+          ),
+        ),
+        title: Text(
+          prayer,
+          style: GoogleFonts.kanit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: prayerColors[prayer],
+          ),
+        ),
+        subtitle: Text(
+          prayerDescriptions[prayer] ?? '',
+          style: GoogleFonts.kanit(fontSize: 14, color: Colors.black54),
+        ),
+        trailing: InkWell(
+          onTap: () => _togglePrayer(prayer),
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(
+                color: isCompleted ? Colors.green : Colors.grey.shade400,
+                width: isCompleted ? 2 : 1,
+              ),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child:
+                isCompleted
+                    ? const Icon(Icons.check, color: Colors.green, size: 24)
+                    : null,
+          ),
+        ),
+      ),
     );
   }
 }
