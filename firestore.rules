@@ -1,55 +1,82 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read all users (needed for teacher to see students)
+
+    // Helper function: check if the requesting user has a given role
+    function hasRole(role) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    // Users collection
+    // - Any authenticated user can read user profiles (needed for teacher→student lookup)
+    // - Users can only write their own document
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow users to read and write to their own subcollections
+
+      // Subcollections (e.g. prayers) — own data only
       match /prayers/{document} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
-    
-    // Prayer times collection - allow users to access their own prayer times
+
+    // Prayer times - per-user, own data only
     match /user_prayer_times/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Public prayer times collection - allow all users to read
+
+    // Public prayer times - read by all authenticated users, write by teachers
     match /public_prayer_times/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if hasRole('teacher');
     }
-    
-    // Class-related collections - allow authenticated users to access
+
+    // Classes - teachers can create/update, authenticated users can read
     match /classes/{classId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      // Only teachers can create or modify classes
+      allow create: if hasRole('teacher');
+      allow update, delete: if hasRole('teacher') &&
+        resource.data.teacherUid == request.auth.uid;
     }
-    
+
+    // Class enrollments - students enroll themselves, teachers/admins can read
     match /class_enrollments/{enrollmentId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      // Students can enroll/unenroll themselves only
+      allow create: if request.auth != null &&
+        request.resource.data.studentId == request.auth.uid;
+      allow delete: if request.auth != null &&
+        resource.data.studentId == request.auth.uid;
+      // Teachers can manage enrollments for their own classes
+      allow update: if hasRole('teacher');
     }
-    
+
+    // Notifications - authenticated users can read their own, teachers write
     match /notifications/{notificationId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if request.auth != null &&
+        resource.data.userId == request.auth.uid;
+      allow write: if hasRole('teacher');
     }
-    
-    // Allow read access to public collections
+
+    // Public content - readable by any authenticated user, writable by teachers only
     match /islamic_videos/{video} {
-      allow read: if true;
-    }
-    
-    match /islamic_events/{event} {
-      allow read: if true;
-    }
-    
-    // Default rule for other collections
-    match /{collection}/{document} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if hasRole('teacher');
     }
+
+    match /islamic_events/{event} {
+      allow read: if request.auth != null;
+      allow write: if hasRole('teacher');
+    }
+
+    // Quizzes - readable by authenticated users, writable by teachers only
+    match /quizzes/{quizId} {
+      allow read: if request.auth != null;
+      allow write: if hasRole('teacher');
+    }
+
+    // Default: deny everything not explicitly matched above
   }
 }

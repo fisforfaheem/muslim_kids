@@ -78,6 +78,12 @@ pubspec.lock
 # Environment files
 .env*
 
+# Firebase config files (contain API keys - never commit these)
+google-services.json
+GoogleService-Info.plist
+**/google-services.json
+**/GoogleService-Info.plist
+
 # Logs
 *.log
 

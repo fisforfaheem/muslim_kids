@@ -1,4 +1,4 @@
-const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
@@ -228,16 +228,26 @@ exports.sendClassReminder = onCall(async (request) => {
   }
 });
 
-// HTTP function for testing FCM notifications
-exports.testNotification = onRequest(async (req, res) => {
+// Callable function for testing FCM notifications (requires auth - teachers only)
+exports.testNotification = onCall(async (request) => {
+  // Only authenticated teachers can send test notifications
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated to send test notifications");
+  }
+
+  const callerDoc = await db.collection("users").doc(request.auth.uid).get();
+  if (!callerDoc.exists || callerDoc.data().role !== "teacher") {
+    throw new HttpsError("permission-denied", "Only teachers can send test notifications");
+  }
+
   const {
     fcmToken,
     title = "Test Notification",
     body = "This is a test message",
-  } = req.body;
+  } = request.data;
 
   if (!fcmToken) {
-    return res.status(400).json({error: "fcmToken is required"});
+    throw new HttpsError("invalid-argument", "fcmToken is required");
   }
 
   try {
@@ -275,17 +285,14 @@ exports.testNotification = onRequest(async (req, res) => {
     const response = await messaging.send(message);
     console.log("Test notification sent:", response);
 
-    res.json({
+    return {
       success: true,
       messageId: response,
       message: "Test notification sent successfully",
-    });
+    };
   } catch (error) {
     console.error("Error sending test notification:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    throw new HttpsError("internal", "Failed to send test notification");
   }
 });
 
